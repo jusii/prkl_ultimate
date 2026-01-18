@@ -73,7 +73,7 @@ static const char *helptext =
 		"\nRUN/STOP to close this window.";
 
 /* Configuration */
-static const char *colors[] = { "Commodore Blue", "Ultimate Black", "Commodore 1", "Commodore 2", "Commodore 3" };
+static const char *colors[] = { "Commodore Blue", "Ultimate Black", "Commodore 1", "Commodore 2", "Commodore 3", "Commodore 128" };
                           
 static const char *filename_overflow_squeeze[] = { "None", "Beginning", "Middle", "End" };
 static const char *itype[]      = { "Freeze", "Overlay on HDMI" };
@@ -86,10 +86,10 @@ struct t_cfg_definition user_if_config[] = {
 #endif
 #if COMMODORE && !RECOVERYAPP
     { CFG_USERIF_NAVIGATION, CFG_TYPE_ENUM,   "Navigation Style",     "%s", navstyles, 0,  1, 1 },
-    { CFG_USERIF_COLORSCHEME,CFG_TYPE_ENUM,   "Color Scheme",         "%s", colors,  0,  4, 0 },
+    { CFG_USERIF_COLORSCHEME,CFG_TYPE_ENUM,   "Color Scheme",         "%s", colors,  0,  5, 0 },
 #else
     { CFG_USERIF_NAVIGATION, CFG_TYPE_ENUM,   "Navigation Style",     "%s", navstyles, 0,  1, 0 },
-    { CFG_USERIF_COLORSCHEME,CFG_TYPE_ENUM,   "Color Scheme",         "%s", colors,  0,  4, 1 },
+    { CFG_USERIF_COLORSCHEME,CFG_TYPE_ENUM,   "Color Scheme",         "%s", colors,  0,  5, 1 },
 #endif
 //    { CFG_USERIF_WORDWRAP,   CFG_TYPE_ENUM,   "Wordwrap text viewer", "%s", en_dis,  0,  1, 1 },
 
@@ -149,11 +149,13 @@ const t_scheme_colors schemes[] = {
     { 6, 14,  1, 0, 14, 0 },
     { 6, 14, 15, 1, 14, 0 },
     { 6, 14,  0, 1, 14, 0 },
+    { 13,11, 15,13, 0,  0 },
+    { 0,  0, 15,13, 0,  0 }, // telnet
 };
 
 void UserInterface :: effectuate_settings(void)
 {
-    const t_scheme_colors *scheme = logo ? &schemes[cfg->get_value(CFG_USERIF_COLORSCHEME)] : &schemes[1]; // for telnet always use black
+    const t_scheme_colors *scheme = logo ? &schemes[cfg->get_value(CFG_USERIF_COLORSCHEME)] : &schemes[6]; // for telnet always use something useful
     color_border = scheme->border;
     color_fg     = scheme->foreground;
     color_bg     = scheme->background;
