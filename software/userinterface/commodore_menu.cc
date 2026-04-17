@@ -100,6 +100,7 @@ CommodoreMenu :: CommodoreMenu(UserInterface *ui) : ContextMenu(ui, NULL, 0, 0, 
     appendAction(new Action("BUILT-IN DRIVE B", S_cfg_page, e_drive_b));
     //appendAction(new Action("ADVANCED SETTINGS", S_advanced, 0));
     appendAction(new Action("SYSTEM INFORMATION", S_sysinfo, 0));
+    appendAction(new Action("LICENSE INFORMATION", S_licenses, 0));
 
     // Instantiate and attach the root tree browser
     Browsable *root = new BrowsableRoot();
@@ -298,5 +299,19 @@ SubsysResultCode_e CommodoreMenu :: S_sysinfo(Action *act, void *context)
     CommodoreMenu *menu = (CommodoreMenu *)context;
     SystemInfo::generate(menu->user_interface);
     menu->draw();
+    return SSRET_OK;
+}
+
+extern const char _license_text[];
+extern const uint32_t _license_text_size;
+
+SubsysResultCode_e CommodoreMenu :: S_licenses(Action *act, void *context)
+{
+    ContextMenu *menu = (ContextMenu *)context;
+
+    const char* pLicenseText = _license_text;
+    menu->user_interface->run_editor(pLicenseText, strlen(pLicenseText));
+    menu->draw();
+
     return SSRET_OK;
 }

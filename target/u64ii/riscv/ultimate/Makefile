@@ -208,7 +208,7 @@ VPATH +=	$(PATH_SW)/u64ii
 VPATH +=	$(PATH_SW)/u64
 VPATH +=	$(PATH_SW)/u64ctrl/main
 
-SRCS_ASM =
+SRCS_ASM =  licenses.s
 
 SRCS_ASMS = crt0.S port_asm.S
 
@@ -236,6 +236,8 @@ LFLAGS   = --gc-sections
 LINKMETHOD = ld
 
 include ../../../common/rules.mk
+
+licenses.o: $(PATH_SW)/licenses/licenses.txt $(PATH_SW)/licenses/licenses.s
 
 mps_png.o: mps_png.cc
 	@echo Compiling $(<F) optimized for speed

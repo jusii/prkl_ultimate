@@ -1,0 +1,48 @@
+License Information
+===================
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+
+The following open source projects and respective licenses are used:
+
+Spiffy Patch
+============
+License: GPLv3
+Copyright SpiffyCrew et al.
+https://github.com/SpiffyCrew/Spiffy_Ultimate
+
+1541 Ultimate
+=============
+License: GPLv3
+Copyright Gideon Zweijtzer et al.
+https://github.com/GideonZ/1541ultimate
+
+Micro HTTP Server
+=================
+License: BSD 3-Clause License
+Copyright StarNight
+https://github.com/starnight/MicroHttpServer
+
+Espressif IoT Dev Framework
+===========================
+License: Apache License, Version 2.0
+Copyright Espressif Systems
+https://github.com/espressif/esp-idf
+
+FatFs Filesystem
+================
+License: BSD-style permissive license
+Copyright ChaN
+https://elm-chan.org/fsw/ff
+
+FreeRTOS
+========
+License: MIT License
+Copyright Amazon.com, Inc. or its affiliates
+https://github.com/FreeRTOS/FreeRTOS
+
+lwIP TCP/IP Stack
+=================
+License: BSD 3-Clause License
+Copyright The lwIP Contributors
+https://savannah.nongnu.org/projects/lwip
