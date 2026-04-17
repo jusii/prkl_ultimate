@@ -41,3 +41,27 @@ factory::
 	@cp software/u64ctrl/build/partition_table/partition-table.bin u64ii
 	@cp software/u64ctrl/build/u64ctrl.bin u64ii
 	@cp external/u64_mk2*.bit u64ii
+
+prerequisites:
+	@$(MAKE) -C tools
+	@$(MAKE) -C target/libs/riscv/lwip
+
+kickstart: prerequisites
+	@$(MAKE) -C target/u64ii/riscv/kickstart
+	@cp target/u64ii/riscv/kickstart/result/kickstart.app kickstart.ue2
+
+kickburn: prerequisites
+	@$(MAKE) -C target/u64ii/riscv/kickburn
+	@cp target/u64ii/riscv/kickburn/result/kickburn.app kickburn.ue2
+
+spiffy: kickstart kickburn
+
+spiffy_clean:
+	@$(MAKE) -C tools clean
+	@$(MAKE) -C target/libs/riscv/lwip clean
+	@$(MAKE) -C target/u64ii/riscv/ultimate clean
+	@$(MAKE) -C target/u64ii/riscv/kickstart clean
+	@$(MAKE) -C target/u64ii/riscv/kickburn clean
+	@rm -f kickstart.ue2 kickburn.ue2
+
+.PHONY: all esp32 esp32_clean esp32_u64ctrl esp32_u64ctrl_clean esp_depends clean u64ii factory prerequisites kickstart kickburn spiffy spiffy_clean

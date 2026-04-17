@@ -175,7 +175,11 @@ t_scheme_colors schemes[] = {
 
 void UserInterface :: effectuate_settings(void)
 {
+#ifdef KICKSTART
+    const t_scheme_colors *scheme = &schemes[0];
+#else
     const t_scheme_colors *scheme = logo ? &schemes[cfg->get_value(CFG_USERIF_COLORSCHEME)] : &schemes[6]; // for telnet always use something useful
+#endif
     color_border = scheme->border;
     color_fg     = scheme->foreground;
     color_bg     = scheme->background;

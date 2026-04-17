@@ -33,6 +33,8 @@ gitinfo::
 
 mem: $(OUTPUT)/$(PRJ).mem
 
+$(OUTPUT)/gitinfo.h: gitinfo
+
 $(OUTPUT):
 	@echo creating output directory $(OUTPUT)
 	@mkdir -p $(OUTPUT)

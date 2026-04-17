@@ -207,15 +207,21 @@ static void setup(const char *title)
     }
     screen = host->getScreen();
 
+#ifdef KICKSTART
+    user_interface = new UserInterface(title, true);
+#else
     user_interface = new UserInterface(title, false);
+#endif
     user_interface->init(host);
     host->take_ownership(user_interface);
     user_interface->appear();
+#ifndef KICKSTART
     screen->move_cursor(0, 2);
 
     char time_buffer[32];
     console_print(screen, "%s ", rtc.get_long_date(time_buffer, 32));
     console_print(screen, "%s\n", rtc.get_time_string(time_buffer, 32));
+#endif
 }
 
 static void check_flash_disk()
