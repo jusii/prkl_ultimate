@@ -168,6 +168,9 @@ int CommodoreMenu :: handle_key(int c)
         case KEY_SEARCH:
             AssemblyInGui::S_OpenSearch(user_interface);
             return 0;
+        case KEY_HOME:
+            S_file_browser(NULL, this);
+            return 0;
     }
     return ContextMenu :: handle_key(c);
 }
