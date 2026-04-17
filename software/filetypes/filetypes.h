@@ -34,4 +34,7 @@ public:
 	}
 };
 
+class Path;
+bool smartMountCheckPath(Path* newPath);
+
 #endif /* FILEMANAGER_FILETYPES_H_ */

@@ -57,11 +57,26 @@ int FileTypeG64 :: fetch_context_items(IndexedList<Action *> &list)
     uint32_t capabilities = getFpgaCapabilities();
     if(capabilities & CAPAB_DRIVE_1541_1) {
         C64 *machine = C64 :: getMachine();
-        list.append(new Action("Mount Disk", SUBSYSID_DRIVE_A, MENU_1541_MOUNT_G64, ftype));
-    	if (machine->exists()) {
-            list.append(new Action("Run Disk", runDisk_st, 0, ftype));
-            count ++;
-    	}
+
+#if COMMODORE
+        // smart mount: check if new and last path are identical
+        bool isSame = (node) && smartMountCheckPath(node->getPath());
+        if (!isSame) {
+            if (machine->exists()) {
+                list.append(new Action("Run Disk", runDisk_st, 0, ftype));
+                count ++;
+            }
+            list.append(new Action("Mount Disk", SUBSYSID_DRIVE_A, MENU_1541_MOUNT_G64, ftype));
+        }
+        else
+#endif
+        {
+            list.append(new Action("Mount Disk", SUBSYSID_DRIVE_A, MENU_1541_MOUNT_G64, ftype));
+            if (machine->exists()) {
+                list.append(new Action("Run Disk", runDisk_st, 0, ftype));
+                count ++;
+            }
+        }
         list.append(new Action("Mount Disk Read Only", SUBSYSID_DRIVE_A, MENU_1541_MOUNT_G64_RO, ftype));
         list.append(new Action("Mount Disk Unlinked", SUBSYSID_DRIVE_A, MENU_1541_MOUNT_G64_UL, ftype));
         count += 3;

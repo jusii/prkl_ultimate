@@ -39,6 +39,20 @@ extern "C" {
 // tester instance
 FactoryRegistrator<BrowsableDirEntry *, FileType *> tester_d64(FileType :: getFileTypeFactory(), FileTypeD64 :: test_type);
 
+bool smartMountCheckPath(Path* new_path) {
+    static Path _last_path;
+
+    if (!new_path)
+        return false;
+
+    const char* cs_new_path  = new_path->get_path();
+    const char* cs_last_path = _last_path.get_path();
+    bool is_same = (0 == strcmp(cs_new_path, cs_last_path));
+    if (!is_same)
+        _last_path = *new_path;
+    return is_same;
+}
+
 /*********************************************************************/
 /* D64/D71/D81 File Browser Handling                                 */
 /*********************************************************************/
@@ -69,19 +83,26 @@ int FileTypeD64 :: fetch_context_items(IndexedList<Action *> &list)
     }
 
     if ((capabilities & CAPAB_DRIVE_1541_1) && can_mount) {
+
 #if COMMODORE
-        if (machine->exists()) {
-            list.append(new Action("Run Disk", runDisk_st, 0, ftype));
-            count++;
+        // smart mount: check if new and last path are identical
+        bool isSame = (node) && smartMountCheckPath(node->getPath());
+        if (!isSame) {
+            if (machine->exists()) {
+                list.append(new Action("Run Disk", runDisk_st, 0, ftype));
+                count++;
+            }
+            list.append(new Action("Mount Disk", SUBSYSID_DRIVE_A, MENU_1541_MOUNT_D64, ftype));
         }
-        list.append(new Action("Mount Disk", SUBSYSID_DRIVE_A, MENU_1541_MOUNT_D64, ftype));
-#else
-        list.append(new Action("Mount Disk", SUBSYSID_DRIVE_A, MENU_1541_MOUNT_D64, ftype));
-        if (machine->exists()) {
-            list.append(new Action("Run Disk", runDisk_st, 0, ftype));
-            count++;
-        }
+        else
 #endif
+        {
+            list.append(new Action("Mount Disk", SUBSYSID_DRIVE_A, MENU_1541_MOUNT_D64, ftype));
+            if (machine->exists()) {
+                list.append(new Action("Run Disk", runDisk_st, 0, ftype));
+                count++;
+            }
+        }
 
         list.append(new Action("Mount Disk Read Only", SUBSYSID_DRIVE_A, MENU_1541_MOUNT_D64_RO, ftype));
         list.append(new Action("Mount Disk Unlinked", SUBSYSID_DRIVE_A, MENU_1541_MOUNT_D64_UL, ftype));
