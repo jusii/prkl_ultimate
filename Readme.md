@@ -1,0 +1,233 @@
+WELCOME TO AN ULTIMATE 64 REPOSITORY (unofficial but Spiffy!)
+=============================================================
+This is an "unofficial" project adding and enhancing Assembly64 support for the C64 Ultimate.
+It's based on Gideon's 1541ultimate project - his "branded" source tree [v1.1.0](https://github.com/GideonZ/1541ultimate/commits/1.1.0).
+Multiple servers can be configured via a configuration file.
+You can also add custom servers and run an Assembly server on your local network, allowing your Ultimate to access files from your PC.
+
+We added a new kickstart utility to load and run firmware on the fly, without modifying the flash memory. Great for development - or for temporarily adding features.
+
+It also includes several additional changes, such as hotkeys, dual‑joystick controls for the menu system, and a few minor bug fixes - small issues we stumbled upon along the way, some of which seem popular.
+
+The project is also known as the "Spiffy Patch". 👀😀
+
+---
+
+## License
+This project is licensed under the **GNU General Public License v3.0 (GPLv3)**. See [LICENSE](LICENSE.txt).
+
+Copyright © Gideon Zweijtzer, SpiffyCrew et al. See [AUTHORS](AUTHORS.txt).
+
+<i>(To avoid confusion: Gideon is the main author of the original "upstream" project/source tree, but is not involved in this specific "patch".)</i>
+
+---
+
+## Notes on Licensing
+On social media we've seen some project-related discussions about the license, potential relicensing, and whether installing modified firmware could or should be prevented.
+We'd like to clarify a few points:
+
+### It's GPL
+* The original project has been released under the open-source license [GPLv3 by its original creator](LICENSE.txt) (at least since 2011).
+* Over the years, [dozens](AUTHORS.txt) of people have contributed. _(The vast majority of the work, of course, was done by Gideon, who deserves almost all the praise for his excellent work and long-term commitment!)_
+* The GPL does not distinguish between large and small contributions, nor does it depend on who owns or maintains a repository or who initiated a project.
+Every developer owns the copyright for their contributions. Even if it's just a single line of code - you own the copyright for your work.
+Relicensing a GPLed project thus requires the explicit permission of *every single* contributor.
+Otherwise, the contributions of non-consenting contributors would need to be removed. Neither of these options is practical for an open-source project that has existed for many years - and accepted contributions.
+* Even if a project fork was successfully relicensed as closed-source, that would cut it off from any further contributions from the original GPL-licensed project.
+What you clearly cannot do, of course, is run an open-source GPL-licensed project as a front end - and then quietly move community contributions from the GPL project into a closed-source back end fork.
+* The GPL requires any derivative work to be released under the same license. So, no matter how much a project fork is changed or how much bling is added, it remains under the GPL.
+
+This entire discussion, however, is a storm in a teacup, since the fork in question is in fact published (see [3.14](https://github.com/GideonZ/1541ultimate/commits/v3.14) and [1.1.0](https://github.com/GideonZ/1541ultimate/commits/1.1.0)) including the GPLv3 license attribution - as it needed to.
+
+* By the way, if you’re still unsure about the versions, you can compare the Git commit IDs of the referenced source trees with the "Git hash" shown under "System Information" (when running the official firmware 3.14 or 1.1.0) to confirm that they match the exact source trees used to build those firmware images.
+
+* You can also check their Git history to verify that they are forks of the original open-source project and still include community contributions from many [AUTHORS](AUTHORS.txt).
+
+So, it's GPLv3. Just glad we could clarify this. 😊
+
+### GPLv3 & The Right to Tinker
+The (original) project is licensed under GPLv3 - not GPLv2. That may seem like a minor detail. It is not. GPLv3 explicitly added the "_right to tinker_", which GPLv2 lacked.
+
+You can check the details in the [LICENSE](LICENSE.txt), or, read the GNU project's [GPLv3 guide](https://www.gnu.org/licenses/quick-guide-gplv3):
+
+> Some companies have created various different kinds of devices that run GPLed software, and then rigged the hardware so that they can change the software that's running, but you cannot.
+> 
+> Protecting Your Right to Tinker
+> 
+> Tivoization is a dangerous attempt to curtail users' freedom: the right to modify your software will become meaningless if none of your computers let you do it.
+> GPLv3 stops tivoization by requiring the distributor to provide you with whatever information or data is necessary to install modified software on the device.
+> This may be as simple as a set of instructions, or it may include special data such as cryptographic keys or information about how to bypass an integrity check in the hardware.
+> It will depend on how the hardware was designed - but no matter what information you need, you must be able to get it.
+
+So, tinkering with a hardware device shipped with firmware based on a GPLv3 sources is legal - and is, in fact, one of the key rights GPLv3 was designed to protect.
+That is good news. If you bought a device running GPLv3-based firmware, you can request the vendor to release the source code and allow you to build and install modified firmware (which has worked just fine for us, so we’re good... so far! 😄).
+And you have this right - even if a vendor failed to notify you about your rights, as required by the GPL (license information must be embedded in or provided with every shipped unit and software/firmware release).
+
+Again, glad we could clarify this.
+
+### However...
+You have the right to tinker, but you also take responsiblity once you modify a device's firmware.
+If you break or brick something, don't blame the hardware vendor - nor us, nor anyone else...
+
+---
+
+## Trademarks
+The original sources in the _branded fork_ contained certain trademarks and logos.
+To avoid potential conflicts, we have removed such trademark references from the source tree, except where fair use applies (when no endorsement is implied, e.g. referring to a specific printer model type).
+
+---
+
+## Custom Branding
+We added customizable branding through a separate JSON configuration file.
+Separate branding files are a common approach in commercially distributed open-source projects (Linux distros, etc.).
+They allow binaries to be built and shipped while keeping protected trademarks separate - outside the GPL-licensed source tree and outside the executables.
+
+You can adjust the title screen - including the logo and colors - to your liking.
+If you're using this purely for personal, non-distributed home use, you could theoretically modify the names and logo to restore the exact original appearance. Theoretically.
+
+Here is an example [branding.json](config/branding.json) file. Adjust it to your needs and store it
+in the internal flash of your device, at
+
+     /flash/config/branding.json
+
+The `logo/color` array specifies two colors for the two top stripes on the main screen.
+Color values correspond to the C64 color palette.
+
+---
+
+## Assembly64 Configuration
+The configuration for Assembly64 servers is fully customizable.
+You can configure as many servers as you like - even run your own Assembly server at home to access files on your PC from your Ultimate.
+
+Create the following file:
+
+    /flash/config/server.json
+
+This file defines your Assembly servers. It is a simple JSON file (ASCII text).
+
+This example configures only "Assembly64" and shows all available options:
+
+```
+{
+    "assembly64": [
+        {
+         "name":         "Assembly64",
+         "host":         "hackerswithstyle.se",
+         "port":         80,
+         "client-id":    "Spiffy",
+         "url-search":   "/leet/search/aql/0/100?query=",
+         "url-patterns": "/leet/search/aql/presets",
+         "url-entries":  "/leet/search/entries",
+         "url-download": "/leet/search/bin"
+        }
+    ]
+}
+```
+
+Adapt the following example file to your needs and store it on your Ultimate: [server.json](config/server.json).
+
+Note: We also removed the hardware vendor's proprietary server from the source tree. If you bought the commercial variant of the Ultimate (those with white PCBs, shipped in beautiful boxes with manuals, stickers, and everything), you likely have the vendor's permission to download from their site. In that case, you can restore their "Commercial" server address in the configuration file.
+
+### Home Assembly
+If you want to run a tiny "Home Assembly" server in your local network, take a look at this simple solution.
+It's also useful for testing...
+
+[Spiffy's (Ultimate) Home Assembly 64](https://github.com/spiffycrew/Spiffy_Home_Assembly_64)
+
+## Hotkeys
+We’ve added a number of hotkeys to make certain operations more accessible.
+
+*Indeed, we were a bit surprised that the hotkeys received so much attention. The related changes only affect a couple of lines of code - it was really minor work. Sometimes it's the small things that matter...* 😊
+
+### Fixed/Improved Hotkeys
+* **C= J**: swap joystick (now also works in the main menu, not just in the file browser)
+* **C= HOME** / **HOME**: set home directory / go to home directory (was broken in the commercial fork)
+* **C= L**: show developer log (now also works in the main menu, not just in the file browser)
+
+### New Hotkeys
+* **C= X**: Reset
+* **C= Z**: Reboot
+* **C= B**: Power-Cycle
+* **C= O**: Power OFF
+
+All hotkeys work only when the menu is active (after pressing C= RESTORE).
+
+## Building
+See details in Gideon's original project [README](README.txt) for basics.
+
+We added a new make target:
+
+    make kickstart
+
+This builds a small "kickstart" utility - sometimes also referred to as a "soft patch"... 😆
+Its build only requires the rv32 cross-compiler, but not the ESP toolchain etc.
+It directly loads and executes the firmware in RAM - and doesn't require any additional hardware. No JTAG (or strings) attached.
+It does not touch your flash (original firmware+FPGA), nor does it touch the ESP32 (Wi-Fi & power-controller).
+
+### Kickstart
+Build, then copy the ```kickstart.ue2``` to the machine, and execute it.
+
+Kickstart requires matching FPGA and ESP32 firmware to already be present on your board - and it verifies this.
+If they do not match, you need to use the normal updater, an official updater, or one from Gideon’s project to install the correct versions.
+
+### Quickstart
+* Nifty's tip #1: Use FTP to transfer the kickstarter remotely (e.g., to /Temp).
+* Nifty's tip #2: Enable the FAST_LAUNCH switch in the kickstart makefile during development to disable the confirmation dialog.
+* Nifty's tip #3: Once confirmation is disabled, you can also launch the kickstarter remotely via Telnet.
+* Nifty's tip #4: Use a shell script automating everything. You can then build-run-repeat in seconds - until you mess up and have to power-cycle manually to recover. See [quickstart.sh](quickstart.sh). Just set the target's IP address. Remember to enable Telnet and FTP on your Ultimate.
+
+### Other Make Targets
+There are a few more new make targets, i.e.
+
+    make kickburn
+
+This is very similar to "kickstart", but programs flash instead (also known as a "flash patch" 😉). Please be careful! If the firmware you're flashing doesn't work properly, you may end up with a bricked device - and you'll need the right JTAG programmer and cable to recover.
+
+## Shout-out
+The Assembly64 team is not involved with this project.
+However, if you find Assembly64 useful, please support the guys who maintain the server and provide the storage and bandwidth - to keep their bitstream wiggling and your joysticks waggling.
+
+[assembly64.hackerswithstyle.se](https://assembly64.hackerswithstyle.se)
+
+They also offer Assembly64/Ultimate remote management software for your PC or Mac - which *even runs with stock firmware*! 😃
+
+## FAQ
+
+### Q: Can any of the changes here be integrated into another project, official firmware etc?
+
+A1: Absolutely! All our modifications are released under the GPLv3.
+Any project with a matching license is welcome to grab what they like.
+
+A2: There are, however, several features and changes that the other "official" projects may not want.
+And that's okay and totally understandable.
+So don't expect that certain features added here will soon be integrated elsewhere. They have other commitments and priorities to consider.
+
+### Q: Would you agree to relicense your changes for a closed-source fork?
+
+A: No! 😂
+
+### Q: Is building my own firmware and tinkering with the device safe?
+
+A1: You're on your own. If you're not sure whether you should mess with it, then you probably shouldn't.
+
+A2: With the "kickstarter", running your own firmware is much safer than using a firmware updater, as it doesn't even touch the flash. If you mess up, just power-cycle the system to restore the original state.
+The "critical" areas of the flash containing the firmware and FPGA are locked. We actually improved safety by completely removing the code to unlock the flash from the firmware (it was unnecessarily present in the original). Even if a kickstarted firmware image behaved unexpectedly or crashed, the code required to modify the critical areas of the flash memory is not even present at all (it's now only part of the firmware update utility).
+
+### Q: I have an idea or patch. Can you add this?
+
+A: Probably not. We do not plan to maintain this as a "competing fork" or accept pull requests.
+We simply added features we personally wanted (and apparently a few others like too :) ).
+We released the modified sources as the GPL requires - and as it may help others. If we broke anything with our changes, we will certainly look into it.
+We may stumble across something else along the way. But for the moment, we are quite happy with this spiffy retro system.
+And we may be swapping the keyboard for a joystick for a while. (Or for a mouse!? 😃)<br>
+
+## Finally...
+We'd like to emphasize that Gideon has done excellent work on this project, and his long-term commitment to maintaining it is remarkable. We know from our own experience how exhausting the maintenance of open-source projects can be (lots of requests, demands, and bug reports from random users).
+
+We also know from our (professional) experience that having a good product alone isn't enough. The hardware vendor has done an amazing job here with producing complete units, with beautiful boxes, manuals and everything - and reconnecting with the original spirit.
+
+However, it seems to us that the concept to fork the sources wasn't completely thought through. A fork doesn't change the license, and changing the license would be a bad idea in this case anyway (as the fork would be cut off from contributions from the main GPL-licensed repository). Technically, the fork wasn't really necessary (yes, there are some differences in the hardware (and some GUI differences) compared to Gideon’s original U64EII, but these are marginal compared to the differences in his other hardware variants). All the fork really did was increase the workload, as now two separate source trees need to be maintained. And now there is no easy way for community contributions that are specific to the "branded" variant (and you'll notice that many of our fixes are indeed specific to that variant). So, it seems to us that it would be sensible to revisit the source and fork concept - especially considering that a large number of these devices have been shipped (and the community isn't made up of just gamers - but also of people who love to create and tinker... 😉).
+
+*Dear Ulti-Mates,*<br>
+🕹️⌨️ 📺<br>
+*Stay spiffy!*
