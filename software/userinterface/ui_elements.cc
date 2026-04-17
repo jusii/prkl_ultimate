@@ -448,9 +448,11 @@ int  UIChoiceBox :: poll(int)
                 redraw();
             }
             break;
+        case KEY_RIGHT:
         case KEY_SPACE:
         case KEY_RETURN:
             return current + 1;
+        case KEY_LEFT:
         case KEY_BREAK: // break
         case KEY_ESCAPE: // exit!
         case '`': // left arrow
