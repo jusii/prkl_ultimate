@@ -3,6 +3,8 @@
 #include <string.h>
 #include "tree_browser.h"
 #include "tree_browser_state.h"
+#include "subsys.h"
+#include "c64.h"
 
 ContextMenu :: ContextMenu(UserInterface *ui, TreeBrowserState *state, int initial, int y, int when_done, int ind) : UIObject(ui), actions(2, 0)
 {
@@ -307,6 +309,35 @@ int ContextMenu :: handle_key(int c)
                 ret = select_item();
             }
             break;
+
+#ifndef RECOVERYAPP
+        case KEY_CTRL_J: // joyswap
+            return swap_joystick();
+        case KEY_CTRL_O: // power OFF
+        {
+            SubsysCommand* cmd = new SubsysCommand(NULL, SUBSYSID_C64, MENU_C64_POWEROFF, (int)0, "", "");
+            cmd->execute();
+            break;
+        }
+        case KEY_CTRL_B: // power-cycle
+        {
+            SubsysCommand* cmd = new SubsysCommand(NULL, SUBSYSID_C64, MENU_C64_POWERCYCLE, (int)0, "", "");
+            cmd->execute();
+            break;
+        }
+        case KEY_CTRL_X: // reset
+        {
+            SubsysCommand* cmd = new SubsysCommand(NULL, SUBSYSID_C64, MENU_C64_RESET, (int)0, "", "");
+            cmd->execute();
+            break;
+        }
+        case KEY_CTRL_Z: // reboot
+        {
+            SubsysCommand* cmd = new SubsysCommand(NULL, SUBSYSID_C64, MENU_C64_REBOOT, (int)0, "", "");
+            cmd->execute();
+            break;
+        }
+#endif
 
         default:
             if ((c >= '!') && (c < 0x80)) {

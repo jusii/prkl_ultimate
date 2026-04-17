@@ -437,6 +437,8 @@ public:
     friend class SoftIECTarget; // UCI target that performs DMA load
 };
 
+int swap_joystick();
+
 // extern C64 *c64;
 
 #endif

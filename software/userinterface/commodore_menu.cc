@@ -12,6 +12,9 @@ extern "C" {
 #include "assembly_search.h"
 #include "system_info.h"
 #include "task_menu.h"
+#include "c64.h"
+
+extern StreamTextLog textLog; // the global log
 
 typedef enum {
     e_audio_mixer = 0,
@@ -170,6 +173,12 @@ int CommodoreMenu :: handle_key(int c)
             return 0;
         case KEY_HOME:
             S_file_browser(NULL, this);
+            return 0;
+        case KEY_CTRL_L:
+            reset_quick_seek();
+            state->refresh = true;
+            user_interface->run_editor(textLog.getText(), textLog.getLength());
+            draw();
             return 0;
     }
     return ContextMenu :: handle_key(c);
