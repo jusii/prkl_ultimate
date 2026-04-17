@@ -63,8 +63,10 @@ class Esp32
 public:
     Esp32();
     void Quit();
+#ifndef FLASH_EXTRA_PROTECTION
     int  Download(void); // Switch to download mode and setup flash
     int  Flash(const uint8_t *binary, uint32_t address, uint32_t length, EspDownloadCallback_t callback, void *context);
+#endif
     void AttachApplication(Esp32Application *app);
 
     DmaUART *uart;

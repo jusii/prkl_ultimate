@@ -50,6 +50,7 @@ typedef struct
 #define ESP_ATTACH_SPI       0x0D
 #define FLASH_TRANSFER_SIZE  0x400
 
+#ifndef FLASH_EXTRA_PROTECTION
 // Single APP partition table
 const uint8_t partition_table[] = {
     0xaa, 0x50, 0x01, 0x02, 0x00, 0x90, 0x00, 0x00, 0x00, 0x60, 0x00, 0x00, 0x6e, 0x76, 0x73, 0x00, //  |.P.......`..nvs.|
@@ -62,6 +63,7 @@ const uint8_t partition_table[] = {
     0xf4, 0xad, 0x4f, 0x45, 0x38, 0x56, 0x4b, 0x5d, 0x74, 0x35, 0xb6, 0x2c, 0x75, 0xb6, 0x95, 0x24, //  |..OE8VK]t5.,u..$|
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, //  |................|
 };
+#endif
 
 Esp32 :: Esp32()
 {
@@ -227,6 +229,7 @@ bool Esp32::Command(uint8_t opcode, uint16_t length, uint8_t chk, uint8_t *data,
     return false;
 }
 
+#ifndef FLASH_EXTRA_PROTECTION
 static uint8_t receiveBuffer[512];
 int Esp32 :: Download(void)
 {
@@ -410,6 +413,7 @@ int Esp32 :: Flash(const uint8_t *binary, uint32_t address, uint32_t length, Esp
     printf("Programming ESP32 was a success!\n");
     return 0;
 }
+#endif // !FLASH_EXTRA_PROTECTION
 
 #define PRINT_BOOT_MSG 0
 void Esp32 :: ReadRxMessage(void)

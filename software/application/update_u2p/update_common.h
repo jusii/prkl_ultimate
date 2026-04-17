@@ -254,6 +254,7 @@ static void check_flash_disk()
     }
 }
 
+#ifndef FLASH_EXTRA_PROTECTION
 static void write_protect(Flash *flash, int kilobytes)
 {
     console_print(screen, "\nConfiguring Flash write protection..\n");
@@ -261,3 +262,4 @@ static void write_protect(Flash *flash, int kilobytes)
     flash->protect_enable();
     console_print(screen, "Done!                            \n");
 }
+#endif

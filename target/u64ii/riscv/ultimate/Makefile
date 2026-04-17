@@ -55,7 +55,6 @@ SRCS_CC	 =  u64ii_init.cc \
 			w25q_flash.cc \
 			s25fl_flash.cc \
 			s25fl_l_flash.cc \
-			prog_flash.cc \
 			product.cc \
 			config.cc \
 			subsys.cc \
@@ -224,6 +223,10 @@ SRCS_NANO = nano_minimal.nan
 PATH_INC =  $(addprefix -I, $(VPATH))
 OPTIONS  = -march=$(MARCH) -mabi=$(MABI) $(EFFORT) -ffunction-sections -fdata-sections -nostartfiles -mno-fdiv
 OPTIONS += -gdwarf-2 -Os -DRISCV -DU64=2 -DUSB2513 -DOS -DIOBASE=0x10000000 -DU2P_IO_BASE=0x10100000 -DCLOCK_FREQ=100000000 -Wno-write-strings -DFP_SUPPORT=1 -DCOMMODORE=1
+# Flash‑protection removal code should not be included in the Ultimate application binary.
+# So even if the application crashes, no code exists anywhere in memory that could
+# accidentally disable the flash protection.
+OPTIONS += -DFLASH_EXTRA_PROTECTION=1
 COPTIONS = $(OPTIONS) -std=gnu99
 CPPOPT   = $(OPTIONS) -std=gnu++11 -fno-exceptions -fno-rtti -fno-threadsafe-statics -fpermissive
 LINK 	 = linker.x

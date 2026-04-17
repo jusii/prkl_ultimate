@@ -71,11 +71,13 @@ public:
 	// Multiple FPGA images
     virtual void reboot(int addr) { }
 
+#ifndef FLASH_EXTRA_PROTECTION
 	// Protection functions
 	virtual void protect_disable(void) { }
 	virtual bool protect_configure(int kilobytes) { return false; }
 	virtual void protect_enable() { }
     virtual void protect_show_status(void) { }
+#endif
 
 };
 

@@ -61,9 +61,11 @@ public:
 	virtual Flash *tester(void);
 	virtual const char *get_type_string(void);
     
+#ifndef FLASH_EXTRA_PROTECTION
 	// Protection functions
 	virtual void protect_disable(void);
 	virtual bool protect_configure(int kilobytes);
+#endif
 
 	// Low level read/write/erase
 	virtual bool erase_sector(int sector);

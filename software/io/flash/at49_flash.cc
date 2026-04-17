@@ -272,6 +272,7 @@ void AT49_Flash :: reboot(int addr)
     // not yet possible, because our ZPU ram is preventing us from writing the right RAM
 }
 
+#ifndef FLASH_EXTRA_PROTECTION
 bool AT49_Flash :: protect_configure(void)
 {
     return false;
@@ -280,3 +281,4 @@ bool AT49_Flash :: protect_configure(void)
 void AT49_Flash :: protect_disable(void)
 {
 }
+#endif

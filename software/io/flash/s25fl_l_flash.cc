@@ -190,6 +190,7 @@ bool S25FLxxxL_Flash :: erase_sector(int sector)
 	return ret;
 }
 
+#ifndef FLASH_EXTRA_PROTECTION
 void S25FLxxxL_Flash :: protect_disable(void)
 {
     portENTER_CRITICAL();
@@ -285,3 +286,4 @@ bool S25FLxxxL_Flash :: protect_configure(int kilobytes)
     portEXIT_CRITICAL();
     return true;
 }
+#endif

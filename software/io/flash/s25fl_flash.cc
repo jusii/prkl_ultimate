@@ -91,6 +91,7 @@ const char *S25FL_Flash ::get_type_string(void)
     }
 }
 
+#ifndef FLASH_EXTRA_PROTECTION
 void S25FL_Flash :: protect_disable(void)
 {
 	// unprotect the device
@@ -178,3 +179,4 @@ bool S25FL_Flash :: protect_configure(int kilobytes)
     portEXIT_CRITICAL();
     return true;
 }
+#endif

@@ -432,6 +432,7 @@ void AT45_Flash :: reboot(int addr)
     error(("You should never see this!\n"));
 }
 
+#ifndef FLASH_EXTRA_PROTECTION
 bool AT45_Flash ::protect_configure(int kilobytes)
 {
     portENTER_CRITICAL();
@@ -526,3 +527,4 @@ void AT45_Flash ::protect_enable()
     SPI_FLASH_CTRL = SPI_FORCE_SS | SPI_LEVEL_SS; // drive CSn high
     portEXIT_CRITICAL();
 }
+#endif

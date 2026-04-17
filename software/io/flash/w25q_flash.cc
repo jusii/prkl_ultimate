@@ -379,6 +379,7 @@ void W25Q_Flash :: reboot(int addr)
     debug(("You should never see this!\n"));
 }
 
+#ifndef FLASH_EXTRA_PROTECTION
 void W25Q_Flash :: protect_disable(void)
 {
 	// unprotect the device
@@ -477,6 +478,7 @@ bool W25Q_Flash ::protect_configure(int kilobytes)
     portEXIT_CRITICAL();
     return true;
 }
+#endif
 
 bool W25Q_Flash :: wait_ready(int time_out)
 {

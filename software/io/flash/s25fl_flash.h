@@ -39,9 +39,11 @@ public:
 	virtual Flash *tester(void);
     virtual const char *get_type_string(void);
     
+#ifndef FLASH_EXTRA_PROTECTION
 	// Protection functions
 	virtual void protect_disable(void);
 	virtual bool protect_configure(int kilobytes);
+#endif
 };
 
 extern S25FL_Flash s25fl_flash;
