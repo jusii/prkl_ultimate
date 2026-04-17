@@ -9,6 +9,7 @@
 #include "tree_browser_state.h"
 #include "path.h"
 #include "keyboard_usb.h"
+#include "json.h"
 #ifndef UPDATER
 #ifndef RECOVERYAPP
 #include "c1541.h"
@@ -84,7 +85,7 @@ static const char *helptext =
 		"\nRUN/STOP to close this window.";
 
 /* Configuration */
-static const char *colors[] = { "Commodore Blue", "Ultimate Black", "Commodore 1", "Commodore 2", "Commodore 3", "Commodore 128" };
+static       char *colors[] = { "Commodore Blue", "Ultimate Black", "Commodore 1", "Commodore 2", "Commodore 3", "Commodore 128" };
                           
 static const char *filename_overflow_squeeze[] = { "None", "Beginning", "Middle", "End" };
 static const char *itype[]      = { "Freeze", "Overlay on HDMI" };
@@ -97,10 +98,10 @@ struct t_cfg_definition user_if_config[] = {
 #endif
 #if COMMODORE && !RECOVERYAPP
     { CFG_USERIF_NAVIGATION, CFG_TYPE_ENUM,   "Navigation Style",     "%s", navstyles, 0,  1, 1 },
-    { CFG_USERIF_COLORSCHEME,CFG_TYPE_ENUM,   "Color Scheme",         "%s", colors,  0,  5, 0 },
+    { CFG_USERIF_COLORSCHEME,CFG_TYPE_ENUM,   "Color Scheme",         "%s", (const char**)colors,  0,  5, 0 },
 #else
     { CFG_USERIF_NAVIGATION, CFG_TYPE_ENUM,   "Navigation Style",     "%s", navstyles, 0,  1, 0 },
-    { CFG_USERIF_COLORSCHEME,CFG_TYPE_ENUM,   "Color Scheme",         "%s", colors,  0,  5, 1 },
+    { CFG_USERIF_COLORSCHEME,CFG_TYPE_ENUM,   "Color Scheme",         "%s", (const char**)colors,  0,  5, 1 },
 #endif
 //    { CFG_USERIF_WORDWRAP,   CFG_TYPE_ENUM,   "Wordwrap text viewer", "%s", en_dis,  0,  1, 1 },
 
@@ -129,6 +130,13 @@ UserInterface :: UserInterface(const char *title, bool use_logo) : title(title)
     menu_response_to_action = MENU_NOP;
     logo = use_logo;
     heap_info = false;
+
+    logo_title[0] = "\x14\x15\x17\e1 COMMODORE 64 ";
+    logo_title[1] = "\e6\x18\x16\e2\x19 \eR\e1\x1a ULTIMATE \x1a\er ";
+    logo_color[0] = 6;
+    logo_color[1] = 2;
+    customize();
+
     register_store(0x47454E2E, "User Interface Settings", user_if_config);
     effectuate_settings();
 }
@@ -155,7 +163,7 @@ typedef struct {
     int selected_rev;
 } t_scheme_colors;
 
-const t_scheme_colors schemes[] = {
+t_scheme_colors schemes[] = {
     { 6, 14,  1, 1, 14, 1 },
     { 0,  0, 12, 1, 6,  0 },
     { 6, 14,  1, 0, 14, 0 },
@@ -466,15 +474,23 @@ void UserInterface :: set_screen_title()
 
     if (logo) {
         screen->clear();
-        screen->output("\e6\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12\x1c");
-        screen->output("\x14\x15\x17");
-        screen->output("\e1 COMMODORE 64 ");
-        screen->output("\e6\x1e\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12");
+        char color_code[3] = "\e6";
+        color_code[1] = logo_color[0];
+        screen->output(color_code);
+        screen->output("\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12\x1c");
+        screen->output(logo_title[0]);
+        screen->move_cursor(28, 0);
+        screen->output(color_code);
+        screen->output("\er\x1e\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12");
         screen->move_cursor(0, 1);
-        screen->output("\e2\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x1d");
-        screen->output("\e6\x18\x16\e2\x19");
-        screen->output(" \eR\e1\x1a ULTIMATE \x1a\er ");
-        screen->output("\e2\x1f\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b");
+
+        color_code[1] = logo_color[1];
+        screen->output(color_code);
+        screen->output("\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x1d");
+        screen->output(logo_title[1]);
+        screen->move_cursor(28, 1);
+        screen->output(color_code);
+        screen->output("\er\x1f\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b");
     } else {
         int len = title.length();
         int hpos = (width - len) / 2;
@@ -665,6 +681,140 @@ int UserInterface :: keymapper(int c, keymap_options_t map)
 void UserInterface :: help()
 {
     run_editor(helptext, strlen(helptext));
+}
+
+#define JSON_GET(j, name) \
+    ((j && (j->type() == eObject)) ? ((JSON_Object*) j)->get(name) : NULL)
+
+#define JSON_GET_STRING(obj, name, s) \
+    j = JSON_GET(obj, name); \
+    if (j && (j->type() == eString)) \
+        s = strdup(((JSON_String*) j)->get_string());
+
+#define JSON_GET_INTEGER(obj, name, v, mask) \
+    j = JSON_GET(obj, name); \
+    if (j && (j->type() == eInteger)) \
+        v = ((JSON_Integer*) j)->get_value() & mask;
+
+char* unescape_unicode(char *str) {
+    char *src = str, *dst = str;
+
+    while (*src) {
+        if (*src == '\\' && *(src + 1) == 'u') {
+            char *p = src + 2;
+            unsigned int val = 0, digits = 0;
+
+            // Read exactly 4 hex digits
+            while (digits < 4) {
+                char c = *p++;
+                if (c >= '0' && c <= '9') val = (val << 4) + (c - '0');
+                else if (c >= 'a' && c <= 'f') val = (val << 4) + (c - 'a' + 10);
+                else if (c >= 'A' && c <= 'F') val = (val << 4) + (c - 'A' + 10);
+                else break;
+                digits++;
+            }
+
+            if ((digits == 4)&&(val <= 0xFF)) {
+                *dst++ = (char)(val & 0xFF);
+                src = p;
+                continue;
+            }
+        }
+
+        // Normal character
+        *dst++ = *src++;
+    }
+
+    *dst = '\0';
+    return str;
+}
+
+void UserInterface :: customize()
+{
+#ifndef RECOVERYAPP
+    const char* branding_directory = "/Flash/config";
+
+    ConfigManager *cm = ConfigManager :: getConfigManager();
+    if (cm->get_safe_mode())
+        return;
+
+    printf("Checking device branding config...\n");
+    FileManager *fm = FileManager::getFileManager();
+    size_t bufferSize = 4096;
+    char* jsonText = (char*) malloc(bufferSize);
+    if (!jsonText)
+        return;
+
+    uint32_t jsonTextSize=0;
+    JSON *obj = NULL;
+    FRESULT fres = fm->load_file(branding_directory, "branding.json", (uint8_t*) jsonText, bufferSize, &jsonTextSize);
+
+    if ((fres != 0)||(jsonTextSize == 0)) {
+        free(jsonText);
+        return;
+    }
+
+    convert_text_to_json_objects(jsonText, (size_t) jsonTextSize, 1024, &obj);
+    if (!obj) {
+        free(jsonText);
+        return ;
+    }
+
+    JSON* j = JSON_GET(obj, "logo");
+    JSON* t = JSON_GET(j, "title");
+    JSON_List* l = (t && (t->type() == eList)) ? (JSON_List*) t : NULL;
+    for (int i=0;(l && (i < l->get_num_elements()));i++) {
+        JSON* e = (*l)[i];
+        if (e && (e->type() == eString)) {
+            logo_title[i] = strdup(((JSON_String*) e)->get_string());
+            unescape_unicode(logo_title[i]);
+        }
+    }
+
+    t = JSON_GET(j, "color");
+    l = (t && (t->type() == eList)) ? (JSON_List*) t : NULL;
+    for (int i=0;(l && (i < l->get_num_elements()));i++) {
+        JSON* e = (*l)[i];
+        if (e && (e->type() == eInteger))
+            logo_color[i] = ((JSON_Integer*) e)->get_value();
+    }
+
+    JSON* colorJson = JSON_GET(obj, "color-schemes");
+    l = (colorJson && (colorJson->type() == eList)) ? (JSON_List*) colorJson : NULL;
+    if (l) {
+        for (int i=0;i<l->get_num_elements();i++) {
+            JSON* e = (*l)[i];
+            if (e && (e->type()==eObject)) {
+                JSON_GET_STRING( e, "name",         colors[i]);
+                JSON_GET_INTEGER(e, "border",       schemes[i].border,       0xf);
+                JSON_GET_INTEGER(e, "background",   schemes[i].background,   0xf);
+                JSON_GET_INTEGER(e, "foreground",   schemes[i].foreground,   0xf);
+                JSON_GET_INTEGER(e, "selected",     schemes[i].selected,     0xf);
+                JSON_GET_INTEGER(e, "selected_bg",  schemes[i].selected_bg,  0xf);
+                JSON_GET_INTEGER(e, "selected_rev", schemes[i].selected_rev, 0xf);
+
+                // fg/bg must not be identical, otherwise use defaults
+                if (schemes[i].background == schemes[i].foreground) {
+                    schemes[i].background = 14;
+                    schemes[i].foreground = 1;
+                }
+                if (schemes[i].selected == schemes[i].selected_bg) {
+                    schemes[i].background = 1;
+                    schemes[i].foreground = 14;
+                }
+                // selected must not match inverse of normal colors
+                if ((schemes[i].selected == schemes[i].background)&&
+                    (schemes[i].selected_bg == schemes[i].foreground)) {
+                    schemes[i].selected    = schemes[i].foreground;
+                    schemes[i].selected_bg = schemes[i].background;
+                }
+            }
+        }
+    }
+
+    delete obj;
+    free(jsonText);
+#endif
 }
 
 void UserInterface :: show_heap_info()

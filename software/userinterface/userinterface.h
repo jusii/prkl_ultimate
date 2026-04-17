@@ -59,6 +59,7 @@ private:
     UIStatusBox *status_box;
     
     void set_screen_title(void);
+    void customize(void);
     int  pollFocussed(void);
     void peel_off(void);
     bool buttonDownFor(uint32_t ms);
@@ -67,6 +68,8 @@ public:
     int config_save, filename_overflow_squeeze, navmode;
     bool logo;
     bool heap_info;
+    char* logo_title[2];
+    int logo_color[2];
     GenericHost *host;
     Keyboard *keyboard;
     Screen *screen;
