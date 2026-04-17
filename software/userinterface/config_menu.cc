@@ -17,7 +17,15 @@ ConfigBrowser :: ConfigBrowser(UserInterface *ui, Browsable *root, int level) : 
     setCleanup();
     has_path = false;
     start_level = level;
+
+    // Inherited TreeBrowser constructor creates state object of another type...
+    if (state) {
+        delete state;
+        state_root = state = NULL;
+    }
+
     state = new ConfigBrowserState(root, this, level);
+    state_root = state;
 }
 
 ConfigBrowser :: ~ConfigBrowser()

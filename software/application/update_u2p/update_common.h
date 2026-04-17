@@ -156,6 +156,12 @@ static FRESULT check_flashdisk_empty()
         return fres;
     }
     if (dir.get_elements() > 0) {
+#if 0 // Would fix a memleak. But only affects the updater, so doesn't really matter. Better don't touch, don't tell...
+        for (int i = 0; i < dir.get_elements(); i++) {
+            FileInfo *inf = dir[i];
+            delete inf;
+        }
+#endif
         return FR_DIR_NOT_EMPTY;
     }
     return FR_NO_FILE;

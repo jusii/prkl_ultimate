@@ -215,7 +215,11 @@ SubsysResultCode_e CommodoreMenu :: S_cfg_page(Action *act, void *context)
     CommodoreMenu *menu = (CommodoreMenu *)context;
     ConfigStore *store = ConfigManager :: getConfigManager()->find_store(config_menu_names[act->function]);
     if (store) {
-        Browsable *configPage = new BrowsableConfigStore(store);
+        static Browsable *configPage = NULL;
+        if (configPage)
+            delete configPage;
+        configPage = new BrowsableConfigStore(store);
+
         ConfigBrowser *configBrowser = new ConfigBrowser(menu->user_interface, configPage, 1);
         configBrowser->init();
         menu->user_interface->activate_uiobject(configBrowser);
@@ -229,7 +233,10 @@ SubsysResultCode_e CommodoreMenu :: S_cfg_group(Action *act, void *context)
     CommodoreMenu *menu = (CommodoreMenu *)context;
     ConfigGroup *group = ConfigGroupCollection :: getGroup(config_menu_names[act->function], 0);
     if (group) {
-        Browsable *configPage = new BrowsableConfigGroup(group);
+        static Browsable *configPage = NULL;//(Browsable*) group->custom;
+        if (configPage)
+            delete configPage;
+        configPage = new BrowsableConfigGroup(group);
         ConfigBrowser *configBrowser = new ConfigBrowser(menu->user_interface, configPage, 1);
         configBrowser->init();
         menu->user_interface->activate_uiobject(configBrowser);
@@ -253,7 +260,10 @@ SubsysResultCode_e CommodoreMenu :: S_cfg_audio(Action *act, void *context)
 SubsysResultCode_e CommodoreMenu :: S_advanced(Action *act, void *context)
 {
     CommodoreMenu *menu = (CommodoreMenu *)context;
-    Browsable *configRoot = new BrowsableConfigRoot();
+    static Browsable *configRoot = NULL;
+    if (!configRoot)
+        configRoot = new BrowsableConfigRoot();
+
     ConfigBrowser *configBrowser = new ConfigBrowser(menu->user_interface, configRoot);
     configBrowser->init();
     menu->user_interface->activate_uiobject(configBrowser);

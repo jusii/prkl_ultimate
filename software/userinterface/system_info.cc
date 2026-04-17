@@ -149,6 +149,7 @@ void SystemInfo :: storage_info(StreamTextLog& b)
         } else {
             b.format("%14s%s\n", inf->lfname, FileSystem :: get_error_string(fres));
         }
+        delete inf;
     }
 }
 

@@ -552,6 +552,7 @@ FRESULT FileManager::delete_recursive(Path *path, const char *name)
                 for (int i = 0; i < dirlist->get_elements(); i++) {
                     FileInfo *el = (*dirlist)[i];
                     ret = delete_recursive(path, el->lfname);
+                    delete el;
                 }
             } else {
                 ret = get_dir_result;
@@ -720,6 +721,7 @@ FRESULT FileManager::fcopy(const char *path, const char *filename, const char *d
                     for (int i = 0; i < dirlist->get_elements(); i++) {
                         FileInfo *el = (*dirlist)[i];
                         ret = fcopy(sp->get_path(), el->lfname, dp->get_path(), el->lfname, overwrite);
+                        delete el;
                         if (ret != FR_OK) {
                             break;
                         }
