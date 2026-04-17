@@ -742,12 +742,19 @@ FRESULT FileManager::fcopy(const char *path, const char *filename, const char *d
             if (fi) {
                 File *fo = 0;
                 char dest_name[100];
-                strncpy(dest_name, dest_filename, 100);
+                const char* output_filename = dest_filename;
+                // get destination file extension
+                char file_ext[4];
+                get_extension(dest_filename, file_ext, true);
                 // This may look odd, but files inside a D64 for instance, do not have the extension in the filename anymore
-                // so we add it here.
-                set_extension(dest_name, info->extension, 100);
+                // so we add it here, but only when necessary.
+                if (strcmp(file_ext, info->extension) != 0) {
+                    strncpy(dest_name, dest_filename, 100);
+                    set_extension(dest_name, info->extension, 100);
+                    output_filename = dest_name;
+                }
                 uint8_t writeflags = (overwrite)? (FA_WRITE|FA_CREATE_ALWAYS) : (FA_WRITE|FA_CREATE_NEW);
-                ret = fopen(dp, dest_name, writeflags, &fo);
+                ret = fopen(dp, output_filename, writeflags, &fo);
                 if (fo) {
                     uint8_t *buffer = new uint8_t[32768];
                     uint32_t transferred, written;
@@ -777,7 +784,7 @@ FRESULT FileManager::fcopy(const char *path, const char *filename, const char *d
                     fclose(fi);
                 }
                 else { // no output file
-                    printf("Cannot open output file %s\n", filename);
+                    printf("Cannot open output file %s\n", output_filename);
                     fclose(fi);
                 }
             }
