@@ -186,6 +186,7 @@ int TreeBrowser :: poll(int sub_returned)
         state->do_refresh();
 	}
 
+    get_ui()->show_heap_info();
     c = keyb->getch();
     c = get_ui()->keymapper(c, e_keymap_default);
 

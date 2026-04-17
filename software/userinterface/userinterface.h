@@ -66,6 +66,7 @@ public:
     int color_border, color_bg, color_fg, color_sel, color_sel_bg, reverse_sel;
     int config_save, filename_overflow_squeeze, navmode;
     bool logo;
+    bool heap_info;
     GenericHost *host;
     Keyboard *keyboard;
     Screen *screen;
@@ -107,6 +108,8 @@ public:
     void run_editor(const char *, int);
     void swapDisk(void);
     void send_keystroke(int key);
+    void toggle_heap_info(void) { heap_info = !heap_info; }
+    void show_heap_info(void);
 
     UIObject *get_root_object(void) { return ui_objects[0]; }
 

@@ -167,6 +167,7 @@ int ContextMenu :: poll(int sub)
 
     switch(context_state) {
         case e_active:
+            get_ui()->show_heap_info();
             c = keyb->getch();
             c = get_ui()->keymapper(c, e_keymap_default);
             if(c > 0) {

@@ -30,6 +30,7 @@ void ConfigIO :: create_task_items(void)
     myActions.clr_flash = new Action("Clear Flash Config", ConfigIO :: S_clear, 0, 0);
     myActions.clear_dbg = new Action("Clear Debug Log", ConfigIO :: S_reset_log, 0, 0);
     myActions.save_dbg  = new Action("Save Debug Log", ConfigIO :: S_save_log, 0, 0);
+    myActions.heap_info = new Action("Toggle Heap Info", ConfigIO :: S_heap_info, 0, 0);
 
     TaskCategory *cfg = TasksCollection :: getCategory("Configuration", SORT_ORDER_CONFIG);
     cfg->append(myActions.savecfg);
@@ -41,6 +42,7 @@ void ConfigIO :: create_task_items(void)
     TaskCategory *dev = TasksCollection :: getCategory("Developer", SORT_ORDER_DEVELOPER);
     dev->append(myActions.clear_dbg);
     dev->append(myActions.save_dbg);
+    dev->append(myActions.heap_info);
 }
 
 void ConfigIO :: update_task_items(bool writablePath)
@@ -52,6 +54,12 @@ void ConfigIO :: update_task_items(bool writablePath)
         myActions.savefile ->disable();
         myActions.save_dbg ->disable();
     }
+}
+
+SubsysResultCode_e ConfigIO :: S_heap_info(SubsysCommand *cmd)
+{
+    cmd->user_interface->toggle_heap_info();
+    return SSRET_OK;
 }
 
 SubsysResultCode_e ConfigIO :: S_reset_log(SubsysCommand *cmd)

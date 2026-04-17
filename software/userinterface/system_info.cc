@@ -15,6 +15,7 @@
 #include "gitinfo.h"
 #include "u64.h"
 #include "rtc.h"
+#include <malloc.h>
 
 extern C1541 *c1541_A;
 extern C1541 *c1541_B;
@@ -196,6 +197,15 @@ void SystemInfo :: generate(UserInterface *ui)
     buffer.format("Storage Devices:\n");
     buffer.format("================\n");
     storage_info(buffer);
+
+    buffer.format("\n"
+                  "Heap Memory:\n"
+                  "============\n");
+    struct mallinfo mi = mallinfo();
+    buffer.format("Total:     %-7u bytes\n"
+                  "Allocated: %-7u bytes\n"
+                  "Available: %-7u bytes\n",
+                  (uint32_t) (mi.uordblks+mi.fordblks), (uint32_t) mi.uordblks, (uint32_t) mi.fordblks);
 
     ui->run_editor(buffer.getText(), buffer.getLength());
 }

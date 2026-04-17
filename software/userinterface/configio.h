@@ -29,6 +29,7 @@ class ConfigIO : public ObjectWithMenu
         Action *clr_flash;
         Action *clear_dbg;
         Action *save_dbg;
+        Action *heap_info;
     } myActions;
 public:
     ConfigIO();
@@ -41,6 +42,7 @@ public:
     static SubsysResultCode_e S_restore(SubsysCommand *cmd);
     static SubsysResultCode_e S_reset(SubsysCommand *cmd);
     static SubsysResultCode_e S_clear(SubsysCommand *cmd);
+    static SubsysResultCode_e S_heap_info(SubsysCommand *cmd);
     static bool S_read_from_file(File *f, StreamTextLog *log);
 };
 

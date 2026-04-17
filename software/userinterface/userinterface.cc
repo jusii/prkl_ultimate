@@ -1,5 +1,6 @@
 #include "userinterface.h"
 #include <stdio.h>
+#include <malloc.h>
 
 #ifndef NO_FILE_ACCESS
 #include "FreeRTOS.h"
@@ -117,6 +118,7 @@ UserInterface :: UserInterface(const char *title, bool use_logo) : title(title)
     filename_overflow_squeeze = 0;
     menu_response_to_action = MENU_NOP;
     logo = use_logo;
+    heap_info = false;
     register_store(0x47454E2E, "User Interface Settings", user_if_config);
     effectuate_settings();
 }
@@ -652,4 +654,18 @@ int UserInterface :: keymapper(int c, keymap_options_t map)
 void UserInterface :: help()
 {
     run_editor(helptext, strlen(helptext));
+}
+
+void UserInterface :: show_heap_info()
+{
+    if (!heap_info)
+        return;
+    // Show heap information, just overwrite the status line.
+    // Simple solution to help with leak hunting...
+    screen->move_cursor(0, screen->get_size_y()-1);
+    struct mallinfo mi = mallinfo();
+    char buffer[80];
+    sprintf(buffer, "\er\033\035heap: alloc=%-7u, avail=%-7u\e1 ",
+            (uint32_t) mi.uordblks, (uint32_t) mi.fordblks);
+    screen->output(buffer);
 }
