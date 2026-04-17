@@ -10,10 +10,12 @@ extern "C" {
 typedef struct {
     int offset;
     int size;
-    uint8_t buffer[16384];
+    uint8_t buffer[16384*4];
 } t_BufferedBody;
 
 void url_encode(const char *src, mstring &dest);
+
+class SearchService;
 
 class Assembly
 {
@@ -21,8 +23,10 @@ class Assembly
     JSON *presets;
     int socket_fd;
     HTTPReqMessage response;
+    SearchService* server_data;
 
     int   connect_to_server(void);
+    bool  make_request(const char* method, const char* url);
     int read_socket(void);
     void  get_response(HTTPREQ_CALLBACK callback);
     JSON *convert_buffer_to_json(t_BufferedBody *body);
@@ -40,7 +44,7 @@ public:
             delete body;
     }
     void *get_user_context() { return response.userContext; }
-    JSON *get_presets(void);
+    JSON *get_presets(SearchService* server_data);
     JSON *send_query(const char *query);
     JSON *request_entries(const char *id, int cat);
     void  request_binary(const char *id, int cat, int idx);

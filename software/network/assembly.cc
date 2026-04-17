@@ -2,20 +2,8 @@
 #include <sys/socket.h>
 #include "netdb.h"
 #include "attachment_writer.h"
-
-//#define HOSTNAME      "hackerswithstyle.se"
-#define HOSTNAME      "commoserve.files.commodore.net"
-#define HOSTPORT      80
-#define URL_SEARCH    "/leet/search/aql?query="
-#define URL_PATTERNS  "/leet/search/aql/presets"
-#define URL_ENTRIES   "/leet/search/entries"
-#define URL_DOWNLOAD  "/leet/search/bin"
-
-#if COMMODORE
-#define CLIENTID "Commodore"
-#else
-#define CLIENTID "Ultimate"
-#endif
+#include "u64.h"
+#include "assembly_search.h"
 
 Assembly assembly;
 
@@ -63,7 +51,7 @@ void attachment_to_buffer(BodyDataBlock_t *block)
             break;
         case eDataBlock:
             // printf("--- Data (%d bytes)\n", block->length);
-            if (block->length < (16384 - body->offset)) {
+            if (block->length < (sizeof(body->buffer) - body->offset)) {
                 memcpy(body->buffer + body->offset, block->data, block->length);
                 body->offset += block->length;
                 body->size += block->length;
@@ -100,7 +88,7 @@ void write_to_temp(HTTPReqMessage *req, HTTPRespMessage *resp)
 int Assembly :: connect_to_server(void)
 {
     int error;
-    struct hostent my_host, *ret_host;
+    struct hostent my_host, *ret_host = NULL;
     struct sockaddr_in serv_addr;
     char buffer[1024];
 
@@ -109,13 +97,13 @@ int Assembly :: connect_to_server(void)
     this->response.usedAsResponseFromServer = 1;
 
     // setup the connection
-    int result = gethostbyname_r(HOSTNAME, &my_host, buffer, 1024, &ret_host, &error);
+    int result = gethostbyname_r(server_data->host, &my_host, buffer, 1024, &ret_host, &error);
     if (result) {
         printf("Result Get HostName: %d\n", result);
     }
 
     if (!ret_host) {
-        printf("Could not resolve host '%s'.\n", HOSTNAME);
+        printf("Could not resolve host '%s'.\n", server_data->host);
         return -1;
     }
 
@@ -128,10 +116,11 @@ int Assembly :: connect_to_server(void)
     memset((char *) &serv_addr, 0, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
     memcpy(&serv_addr.sin_addr.s_addr, ret_host->h_addr, ret_host->h_length);
-    serv_addr.sin_port = htons(HOSTPORT);
+    serv_addr.sin_port = htons(server_data->port);
 
     if (connect(sock_fd, (struct sockaddr *)&serv_addr,sizeof(serv_addr)) < 0) {
-        printf("Connection failed.\n");
+        printf("Connection failed: %s\n", server_data->host);
+        close(sock_fd);
         return -1;
     }
     // printf("Connection succeeded.\n");
@@ -147,49 +136,63 @@ void Assembly :: close_connection(void)
     socket_fd = -1;
 }
 
-JSON *Assembly :: get_presets(void)
+bool Assembly :: make_request(const char* method, const char* url)
 {
-    static const char request[] = 
-        "GET " URL_PATTERNS " HTTP/1.1\r\n"
-        "Accept-encoding: identity\r\n"
-        "Host: " HOSTNAME "\r\n"
-        "User-Agent: Assembly Query\r\n"
-        "Client-Id: " CLIENTID "\r\n"
-        "Connection: close\r\n"
-        "\r\n";
+    mstring request(256);
+
+    request += method;
+    request += " ";
+    request += url;
+    request += " HTTP/1.1\r\n"
+               "Accept-encoding: identity\r\n"
+               "Host: ";
+    request += server_data->host;
+    request += "\r\n"
+               "User-Agent: Assembly Query\r\n"
+               "Client-Id: ";
+    request += server_data->client_id;
+    request += "\r\n"
+               "Connection: close\r\n"
+               "\r\n";
+
+    if (connect_to_server() < 0)
+        return false;
+
+    //printf("request: %s\n", request.c_str());
+    send(this->socket_fd, request.c_str(), request.length(), MSG_DONTWAIT);
+
+    return true;
+}
+
+JSON *Assembly :: get_presets(SearchService* _server_data)
+{
+    if (server_data != _server_data) {
+        presets = NULL;
+        server_data = _server_data;
+    }
 
     if (presets) {
         return presets;
     }
-    if (connect_to_server() >= 0) {
-        send(this->socket_fd, request, strlen(request), MSG_DONTWAIT);
+
+    if (make_request("GET", server_data->url_patterns)) {
         get_response(collect_in_buffer);
         close_connection();
 
         body = (t_BufferedBody *) response.userContext;
         presets = convert_buffer_to_json(body);
-        return presets;
     }
-    return NULL;
+
+    return presets;
 }
 
 JSON *Assembly :: send_query(const char *query)
 {
-    mstring encoded;
-    url_encode(query, encoded);
+    mstring url;
+    url += server_data->url_search;
+    url_encode(query, url);
 
-    mstring request("GET " URL_SEARCH);
-    request += encoded.c_str();
-    request += " HTTP/1.1\r\n"
-        "Accept-encoding: identity\r\n"
-        "Host: " HOSTNAME "\r\n"
-        "User-Agent: Assembly Query\r\n"
-        "Client-Id: " CLIENTID "\r\n"
-        "Connection: close\r\n"
-        "\r\n";
-
-    if (connect_to_server() >= 0) {
-        send(this->socket_fd, request.c_str(), request.length(), MSG_DONTWAIT);
+    if (make_request("GET", url.c_str())) {
         get_response(collect_in_buffer);
         close_connection();
 
@@ -226,22 +229,17 @@ JSON *Assembly :: send_query(const char *query)
 
 JSON *Assembly :: request_entries(const char *id, int cat)
 {
-    mstring enc_id;
-    url_encode(id, enc_id);
+    char buffer[40];
+    sprintf(buffer, "%d", cat);
 
-    char buffer[64];
-    sprintf(buffer, "GET " URL_ENTRIES "/%s/%d", enc_id.c_str(), cat);
-    mstring request(buffer);
-    request += " HTTP/1.1\r\n"
-        "Accept-encoding: identity\r\n"
-        "Host: " HOSTNAME "\r\n"
-        "User-Agent: Assembly Query\r\n"
-        "Client-Id: " CLIENTID "\r\n"
-        "Connection: close\r\n"
-        "\r\n";
+    mstring url;
+    url += server_data->url_entries;
+    url += "/";
+    url_encode(id, url);
+    url += "/";
+    url += buffer;
 
-    if (connect_to_server() >= 0) {
-        send(this->socket_fd, request.c_str(), request.length(), MSG_DONTWAIT);
+    if (make_request("GET", url.c_str())) {
         get_response(collect_in_buffer);
         close_connection();
 
@@ -265,36 +263,33 @@ JSON *Assembly :: request_entries(const char *id, int cat)
 */
 void Assembly :: request_binary(const char *id, int cat, int idx)
 {
-    mstring enc_id;
-    url_encode(id, enc_id);
+    mstring path;
+    path += "/";
+    url_encode(id, path);
+    path += "/";
 
     char buffer[64];
-    sprintf(buffer, "/%s/%d/%d", enc_id.c_str(), cat, idx);
-    request_binary(buffer, NULL);
+    sprintf(buffer, "%d/%d", cat, idx);
+    path += buffer;
+
+    request_binary(path.c_str(), NULL);
 }
 
 void Assembly :: request_binary(const char *path, const char *filename)
 {
-    mstring request("GET " URL_DOWNLOAD);
-    request += path;
+    mstring url;
+    url += server_data->url_download;
+    url += path;
     if(filename) {
-        request += "/";
-        url_encode(filename, request);
+        url += "/";
+        url_encode(filename, url);
     }
-    request += " HTTP/1.1\r\n"
-        "Accept-encoding: identity\r\n"
-        "Host: " HOSTNAME "\r\n"
-        "User-Agent: Assembly Query\r\n"
-        "Client-Id: " CLIENTID "\r\n"
-        "Connection: close\r\n"
-        "\r\n";
 
-    if (connect_to_server() >= 0) { // resets userContext to NULL
-        send(this->socket_fd, request.c_str(), request.length(), MSG_DONTWAIT);
+    if (make_request("GET", url.c_str())) { // resets userContext to NULL
         get_response(write_to_temp);
         close_connection();
     }
- }
+}
 
 int Assembly :: read_socket(void)
 {
@@ -325,7 +320,7 @@ JSON *Assembly :: convert_buffer_to_json(t_BufferedBody *body)
 {
     body->buffer[body->size] = 0;
     JSON *json = NULL;
-    int j = convert_text_to_json_objects((char *)body->buffer, body->size, 1000, &json);
+    int j = convert_text_to_json_objects((char *)body->buffer, body->size, 1000*6, &json);
     if (j < 0) {
         if (json) {
             delete json;

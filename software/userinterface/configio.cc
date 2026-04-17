@@ -196,7 +196,7 @@ SubsysResultCode_e ConfigIO :: S_restore(SubsysCommand *cmd)
     for(int n = 0; n < cm->stores.get_elements();n++) {
         s = cm->stores[n];
         s->read(false);
-        if (!cm->safeMode) {
+        if (!cm->get_safe_mode()) {
             s->effectuate();
         }
     }

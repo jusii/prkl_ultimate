@@ -79,7 +79,11 @@ CommodoreMenu :: CommodoreMenu(UserInterface *ui) : ContextMenu(ui, NULL, 0, 0, 
     // dummy->disable();
     // appendAction(dummy);
     appendAction(new Action("DISK FILE BROWSER", S_file_browser, 0));
+#if 1
+    appendAction(new Action("INTERNET FILE SEARCH", S_assembly64, 0));
+#else
     appendAction(new Action("COMMOSERVE FILE SEARCH", S_assembly64, 0));
+#endif
     appendAction(new Action("MEMORY & ROMS", S_cfg_group, e_memory));
     appendAction(new Action("TURBO BOOST", S_cfg_group, e_turbo));
     appendAction(new Action("VIDEO SETUP", S_cfg_group, e_video));

@@ -258,6 +258,8 @@ public:
 	Flash *get_flash_access(void) { return flash; }
 	IndexedList<ConfigStore*> *getStores() { return &stores; }
 
+	bool get_safe_mode(void) {return safeMode;}
+
 	friend class ConfigIO;
 };
 

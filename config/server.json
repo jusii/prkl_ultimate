@@ -1,0 +1,23 @@
+{
+    "assembly64": [
+
+        {
+            "name":         "Assembly64",
+            "host":         "hackerswithstyle.se",
+            "client-id":    "Spiffy"
+        },
+
+        {
+            "name":         "Commercial Server",
+            "host":         "commonserver.files.commercial.net",
+            "client-id":    "Commercial"
+        },
+
+        {
+            "name":         "My Local Home Assembly",
+            "host":         "192.168.1.64",
+            "port":         8000
+        }
+
+    ]
+}
