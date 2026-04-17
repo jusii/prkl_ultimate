@@ -274,7 +274,11 @@ int ConfigBrowser :: handle_key(int c)
         case KEY_HELP:
             reset_quick_seek();
             state->refresh = true;
+#if COMMODORE
+            user_interface->run_editor(helptext_wasd, strlen(helptext_wasd));
+#else
             user_interface->run_editor(helptext_ult, strlen(helptext_ult));
+#endif
             break;
         case KEY_SPACE: // space = select
         case KEY_RETURN: // CR = select
