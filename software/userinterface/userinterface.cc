@@ -29,7 +29,7 @@ static const char *helptext =
         "RETURN:     Selection context menu\n"
         "RUN/STOP:   Leave menu / Back\n"
         "\n"
-#if COMMODORE
+#if COMMERCIAL
         "F1:         Action Menu\n"
         "F3:         Page up\n"
         "F5:         Page down\n"
@@ -85,7 +85,7 @@ static const char *helptext =
 		"\nRUN/STOP to close this window.";
 
 /* Configuration */
-static       char *colors[] = { "Commodore Blue", "Ultimate Black", "Commodore 1", "Commodore 2", "Commodore 3", "Commodore 128" };
+static       char *colors[] = { "Retro 64 Blue", "Ultimate Black", "Retro 1", "Retro 2", "Retro 3", "Retro 128 Gray" };
                           
 static const char *filename_overflow_squeeze[] = { "None", "Beginning", "Middle", "End" };
 static const char *itype[]      = { "Freeze", "Overlay on HDMI" };
@@ -96,7 +96,7 @@ struct t_cfg_definition user_if_config[] = {
 #if U64
     { CFG_USERIF_ITYPE,      CFG_TYPE_ENUM,   "Interface Type",       "%s", itype,   0,  1, 0 },
 #endif
-#if COMMODORE && !RECOVERYAPP
+#if COMMERCIAL && !RECOVERYAPP
     { CFG_USERIF_NAVIGATION, CFG_TYPE_ENUM,   "Navigation Style",     "%s", navstyles, 0,  1, 1 },
     { CFG_USERIF_COLORSCHEME,CFG_TYPE_ENUM,   "Color Scheme",         "%s", (const char**)colors,  0,  5, 0 },
 #else
@@ -105,7 +105,7 @@ struct t_cfg_definition user_if_config[] = {
 #endif
 //    { CFG_USERIF_WORDWRAP,   CFG_TYPE_ENUM,   "Wordwrap text viewer", "%s", en_dis,  0,  1, 1 },
 
-#ifndef COMMODORE
+#ifndef COMMERCIAL
     { CFG_USERIF_START_HOME, CFG_TYPE_ENUM,   "Enter Home on Startup", "%s", en_dis, 0,  1, 0 },
 #endif
     { CFG_USERIF_HOME_DIR,   CFG_TYPE_STRING, "Home Directory",        "%s", NULL, 0, 31, (int)"" },
@@ -131,8 +131,8 @@ UserInterface :: UserInterface(const char *title, bool use_logo) : title(title)
     logo = use_logo;
     heap_info = false;
 
-    logo_title[0] = "\x14\x15\x17\e1 COMMODORE 64 ";
-    logo_title[1] = "\e6\x18\x16\e2\x19 \eR\e1\x1a ULTIMATE \x1a\er ";
+    logo_title[0] = "\e2    SIXTY FOUR ";
+    logo_title[1] = "  \eR\e1\x1a  ULTIMATE  \x1a\er ";
     logo_color[0] = 6;
     logo_color[1] = 2;
     customize();
@@ -658,7 +658,7 @@ int UserInterface :: keymapper(int c, keymap_options_t map)
             }
         }
     }
-#if COMMODORE
+#if COMMERCIAL
     switch(c) {
     case KEY_F1: c = KEY_TASKS; break;
     case KEY_F3: c = KEY_PAGEUP; break;

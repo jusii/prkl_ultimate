@@ -34,7 +34,7 @@
 #include "keyboard_usb.h"
 #include "i2c_drv.h"
 #include "product.h"
-#include "commodore_menu.h"
+#include "main_menu.h"
 
 #if U64
     #include "u64_config.h"
@@ -127,9 +127,9 @@ extern "C" void ultimate_main(void *a)
 #if U64
     overlayUserInterface = new UserInterface(title, true);
 
-  #if COMMODORE
-    CommodoreMenu *commodoreMenuOverlay = new CommodoreMenu(overlayUserInterface);
-    overlayUserInterface->activate_uiobject(commodoreMenuOverlay); // root of all evil!
+  #if COMMERCIAL
+    MainMenu *mainMenuOverlay = new MainMenu(overlayUserInterface);
+    overlayUserInterface->activate_uiobject(mainMenuOverlay); // root of all evil!
     overlayUserInterface->init(overlay);
   #else
     Browsable *root = new BrowsableRoot();
@@ -148,9 +148,9 @@ extern "C" void ultimate_main(void *a)
     if(c64) {
         c64UserInterface = new UserInterface(title, true);
         // Instantiate and attach the root tree browser
-#if COMMODORE
-        CommodoreMenu *commodoreMenu = new CommodoreMenu(c64UserInterface);
-        c64UserInterface->activate_uiobject(commodoreMenu); // root of all evil!
+#if COMMERCIAL
+        MainMenu *mainMenu = new MainMenu(c64UserInterface);
+        c64UserInterface->activate_uiobject(mainMenu); // root of all evil!
         c64UserInterface->init(c64);
 #else
         Browsable *root = new BrowsableRoot();

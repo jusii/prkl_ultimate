@@ -9,16 +9,12 @@
 
 
 #define DEFAULT_HOSTNAME_ASS  "hackerswithstyle.se"
-#define DEFAULT_HOSTNAME_COM  "commoserve.files.commodore.net"
 #define DEFAULT_HOSTPORT      80
 #define DEFAULT_URL_SEARCH_ASS "/leet/search/aql/0/100?query="
-//#define DEFAULT_URL_SEARCH_COM "/leet/search/aql?query="
-#define DEFAULT_URL_SEARCH_COM "/leet/search/aql/0/100?query="
 #define DEFAULT_URL_PATTERNS  "/leet/search/aql/presets"
 #define DEFAULT_URL_ENTRIES   "/leet/search/entries"
 #define DEFAULT_URL_DOWNLOAD  "/leet/search/bin"
 #define DEFAULT_CLIENTID_ASS  "Spiffy"
-#define DEFAULT_CLIENTID_COM  "Commodore"
 
 /****************************/
 /* AssemblySearch UI Object */
@@ -132,7 +128,7 @@ int AssemblySearch :: handle_key(int c)
             state->down(window->get_size_y()/2);
             break;
         case KEY_TASKS:
-            ret = MENU_CLOSE; // do nothing in the non-commodore mode
+            ret = MENU_CLOSE; // do nothing in the non-commercial mode
             break;
         case KEY_HELP: 
             state->refresh = true;
@@ -652,15 +648,6 @@ int AssemblyInGui::get_servers()
                               DEFAULT_HOSTNAME_ASS, DEFAULT_HOSTPORT,
                               DEFAULT_CLIENTID_ASS,
                               DEFAULT_URL_SEARCH_ASS,
-                              DEFAULT_URL_PATTERNS,
-                              DEFAULT_URL_ENTRIES,
-                              DEFAULT_URL_DOWNLOAD);
-
-        ServerList[server_count++] =
-            new SearchService("CommoServe",
-                              DEFAULT_HOSTNAME_COM, DEFAULT_HOSTPORT,
-                              DEFAULT_CLIENTID_COM,
-                              DEFAULT_URL_SEARCH_COM,
                               DEFAULT_URL_PATTERNS,
                               DEFAULT_URL_ENTRIES,
                               DEFAULT_URL_DOWNLOAD);

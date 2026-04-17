@@ -5,7 +5,7 @@ extern "C" {
 #include <stdlib.h>
 #include <string.h>
 #include "mystring.h" // my string class
-#include "commodore_menu.h"
+#include "main_menu.h"
 #include "browsable_root.h"
 #include "config_menu.h"
 #include "tree_browser.h"
@@ -71,19 +71,15 @@ const char *config_menu_names[] = {
 };
 
 /************************/
-/* CommodoreMenu Object */
+/* MainMenu Object */
 /************************/
-CommodoreMenu :: CommodoreMenu(UserInterface *ui) : ContextMenu(ui, NULL, 0, 0, MENU_HIDE, 0)
+MainMenu :: MainMenu(UserInterface *ui) : ContextMenu(ui, NULL, 0, 0, MENU_HIDE, 0)
 {
     // Action *dummy = new Action(" ", S_file_browser, 0);
     // dummy->disable();
     // appendAction(dummy);
     appendAction(new Action("DISK FILE BROWSER", S_file_browser, 0));
-#if 1
     appendAction(new Action("INTERNET FILE SEARCH", S_assembly64, 0));
-#else
-    appendAction(new Action("COMMOSERVE FILE SEARCH", S_assembly64, 0));
-#endif
     appendAction(new Action("MEMORY & ROMS", S_cfg_group, e_memory));
     appendAction(new Action("TURBO BOOST", S_cfg_group, e_turbo));
     appendAction(new Action("VIDEO SETUP", S_cfg_group, e_video));
@@ -108,12 +104,12 @@ CommodoreMenu :: CommodoreMenu(UserInterface *ui) : ContextMenu(ui, NULL, 0, 0, 
     root_tree_browser->allow_exit = true;
 }
 
-CommodoreMenu :: ~CommodoreMenu()
+MainMenu :: ~MainMenu()
 {
-    printf("Destructing Commodore browser..\n");
+    printf("Destructing MainMenu browser..\n");
 }
 
-void CommodoreMenu :: init() // call on root!
+void MainMenu :: init() // call on root!
 {
     this->screen = get_ui()->get_screen();
     this->keyb = get_ui()->get_keyboard();
@@ -121,7 +117,7 @@ void CommodoreMenu :: init() // call on root!
 	window->draw_border();
 }
 
-int CommodoreMenu :: poll(int prev)
+int MainMenu :: poll(int prev)
 {
     mstring *msg = this->user_interface->getMessage();
     if (msg) {
@@ -132,7 +128,7 @@ int CommodoreMenu :: poll(int prev)
     int ret = 0;
     if(subContext) {
         if(prev < 0) {
-        	delete subContext;
+            delete subContext;
             subContext = NULL;
             draw();
         } else if(prev > 0) {
@@ -158,7 +154,7 @@ int CommodoreMenu :: poll(int prev)
     return ContextMenu::poll(prev);
 }
 
-int CommodoreMenu :: handle_key(int c)
+int MainMenu :: handle_key(int c)
 {
     switch(c) {
         case KEY_TASKS:
@@ -189,18 +185,18 @@ int CommodoreMenu :: handle_key(int c)
     return ContextMenu :: handle_key(c);
 }
 
-void CommodoreMenu :: redraw()
+void MainMenu :: redraw()
 {
     draw();
     screen->move_cursor(0, screen->get_size_y()-1);
     if (user_interface->navmode == 0) {
-#if COMMODORE
+#if COMMERCIAL
         screen->output("\e1 CRSR+TYPE to NAV F3/F5=PGUP/DN F7=HELP");
 #else
         screen->output("\e1 CRSR+TYPE to NAV F1/F7=PGUP/DN F3=HELP");
 #endif
     } else {
-#if COMMODORE
+#if COMMERCIAL
         screen->output("\e1 WASD=NAV F1=MENU F3/F5=PGUP/DN F7=HELP");
 #else
         screen->output("\e1 WASD=NAV F5=MENU F1/F7=PGUP/DN F3=HELP");
@@ -209,7 +205,7 @@ void CommodoreMenu :: redraw()
     context_state = e_active;
 }
 
-int CommodoreMenu :: select_item(void)
+int MainMenu :: select_item(void)
 {
     selectedAction = actions[item_index];
 
@@ -218,18 +214,18 @@ int CommodoreMenu :: select_item(void)
 }
 
 
-SubsysResultCode_e CommodoreMenu :: S_file_browser(Action *act, void *context)
+SubsysResultCode_e MainMenu :: S_file_browser(Action *act, void *context)
 {
-    CommodoreMenu *menu = (CommodoreMenu *)context;
+    MainMenu *menu = (MainMenu *)context;
     menu->root_tree_browser->init();
     menu->user_interface->activate_uiobject(menu->root_tree_browser);
     return SSRET_OK;
 }
 
-SubsysResultCode_e CommodoreMenu :: S_cfg_page(Action *act, void *context)
+SubsysResultCode_e MainMenu :: S_cfg_page(Action *act, void *context)
 {
     // Let's open the config browser, and tell it to go to level 1 directly, looking for the config page.
-    CommodoreMenu *menu = (CommodoreMenu *)context;
+    MainMenu *menu = (MainMenu *)context;
     ConfigStore *store = ConfigManager :: getConfigManager()->find_store(config_menu_names[act->function]);
     if (store) {
         static Browsable *configPage = NULL;
@@ -244,10 +240,10 @@ SubsysResultCode_e CommodoreMenu :: S_cfg_page(Action *act, void *context)
     return SSRET_OK;
 }
 
-SubsysResultCode_e CommodoreMenu :: S_cfg_group(Action *act, void *context)
+SubsysResultCode_e MainMenu :: S_cfg_group(Action *act, void *context)
 {
     // Let's open the config browser, and tell it to go to level 1 directly, looking for the config group.
-    CommodoreMenu *menu = (CommodoreMenu *)context;
+    MainMenu *menu = (MainMenu *)context;
     ConfigGroup *group = ConfigGroupCollection :: getGroup(config_menu_names[act->function], 0);
     if (group) {
         static Browsable *configPage = NULL;//(Browsable*) group->custom;
@@ -261,10 +257,10 @@ SubsysResultCode_e CommodoreMenu :: S_cfg_group(Action *act, void *context)
     return SSRET_OK;
 }
 
-SubsysResultCode_e CommodoreMenu :: S_cfg_audio(Action *act, void *context)
+SubsysResultCode_e MainMenu :: S_cfg_audio(Action *act, void *context)
 {
     // Let's open the config browser, with one specific set of pages
-    CommodoreMenu *menu = (CommodoreMenu *)context;
+    MainMenu *menu = (MainMenu *)context;
     static const char *names[] = { "Audio Mixer", "Speaker Mixer", "SID Sockets Configuration", "UltiSID Configuration", "SID Addressing", "SID Player Behavior" };
     static BrowsableConfigRootPredefined br(6, names);
 
@@ -274,9 +270,9 @@ SubsysResultCode_e CommodoreMenu :: S_cfg_audio(Action *act, void *context)
     return SSRET_OK;
 }
 
-SubsysResultCode_e CommodoreMenu :: S_advanced(Action *act, void *context)
+SubsysResultCode_e MainMenu :: S_advanced(Action *act, void *context)
 {
-    CommodoreMenu *menu = (CommodoreMenu *)context;
+    MainMenu *menu = (MainMenu *)context;
     static Browsable *configRoot = NULL;
     if (!configRoot)
         configRoot = new BrowsableConfigRoot();
@@ -287,16 +283,16 @@ SubsysResultCode_e CommodoreMenu :: S_advanced(Action *act, void *context)
     return SSRET_OK;
 }
 
-SubsysResultCode_e CommodoreMenu :: S_assembly64(Action *act, void *context)
+SubsysResultCode_e MainMenu :: S_assembly64(Action *act, void *context)
 {
-    CommodoreMenu *menu = (CommodoreMenu *)context;
+    MainMenu *menu = (MainMenu *)context;
     AssemblyInGui :: S_OpenSearch(menu->user_interface);
     return SSRET_OK;
 }
 
-SubsysResultCode_e CommodoreMenu :: S_sysinfo(Action *act, void *context)
+SubsysResultCode_e MainMenu :: S_sysinfo(Action *act, void *context)
 {
-    CommodoreMenu *menu = (CommodoreMenu *)context;
+    MainMenu *menu = (MainMenu *)context;
     SystemInfo::generate(menu->user_interface);
     menu->draw();
     return SSRET_OK;
@@ -305,7 +301,7 @@ SubsysResultCode_e CommodoreMenu :: S_sysinfo(Action *act, void *context)
 extern const char _license_text[];
 extern const uint32_t _license_text_size;
 
-SubsysResultCode_e CommodoreMenu :: S_licenses(Action *act, void *context)
+SubsysResultCode_e MainMenu :: S_licenses(Action *act, void *context)
 {
     ContextMenu *menu = (ContextMenu *)context;
 

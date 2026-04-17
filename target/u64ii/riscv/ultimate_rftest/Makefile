@@ -106,7 +106,7 @@ SRCS_CC	 =  u64ii_init.cc \
 			editor.cc \
 			tree_browser.cc \
 			tree_browser_state.cc \
-			commodore_menu.cc \
+			main_menu.cc \
 			config_menu.cc \
 			context_menu.cc \
 			task_menu.cc \
@@ -223,7 +223,7 @@ SRCS_NANO = nano_minimal.nan
 
 PATH_INC =  $(addprefix -I, $(VPATH))
 OPTIONS  = -march=$(MARCH) -mabi=$(MABI) $(EFFORT) -ffunction-sections -fdata-sections -nostartfiles -mno-fdiv
-OPTIONS += -gdwarf-2 -Os -DRISCV -DU64=2 -DUSB2513 -DOS -DIOBASE=0x10000000 -DU2P_IO_BASE=0x10100000 -DCLOCK_FREQ=100000000 -Wno-write-strings -DFP_SUPPORT=1 -DCOMMODORE=1
+OPTIONS += -gdwarf-2 -Os -DRISCV -DU64=2 -DUSB2513 -DOS -DIOBASE=0x10000000 -DU2P_IO_BASE=0x10100000 -DCLOCK_FREQ=100000000 -Wno-write-strings -DFP_SUPPORT=1 -DCOMMERCIAL=1
 OPTIONS += -DNUM_BUFFERS=32
 OPTIONS += -DDEVELOPER=1 -DSILENT=1 -DNO_ESP=1
 COPTIONS = $(OPTIONS) -std=gnu99

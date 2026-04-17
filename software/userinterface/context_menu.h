@@ -72,7 +72,7 @@ public:
     virtual void redraw(void);
     virtual int select_item(void);
     friend class TaskMenu;
-    friend class CommodoreMenu;
+    friend class MainMenu;
 };
 
 #endif

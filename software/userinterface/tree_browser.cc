@@ -70,13 +70,13 @@ void TreeBrowser :: init() // call on root!
 
     screen->move_cursor(screen->get_size_x()-8, screen->get_size_y()-1);
 
-#if COMMODORE
+#if COMMERCIAL
     screen->output("\eAF7=HELP\eO");
 #else
     screen->output("\eAF3=HELP\eO");
 #endif
 	window = new Window(screen, 0, 2, screen->get_size_x(), screen->get_size_y()-3);
-#if COMMODORE
+#if COMMERCIAL
 	window->draw_border();
 #endif
     state->reload();

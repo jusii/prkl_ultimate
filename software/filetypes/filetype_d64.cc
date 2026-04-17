@@ -84,7 +84,7 @@ int FileTypeD64 :: fetch_context_items(IndexedList<Action *> &list)
 
     if ((capabilities & CAPAB_DRIVE_1541_1) && can_mount) {
 
-#if COMMODORE
+#if COMMERCIAL
         // smart mount: check if new and last path are identical
         bool isSame = (node) && smartMountCheckPath(node->getPath());
         if (!isSame) {

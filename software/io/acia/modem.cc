@@ -66,7 +66,7 @@ static const AciaMessage_t rxData = { ACIA_MSG_RXDATA, 0, 0 };
 
 struct t_cfg_definition modem_cfg[] = {
     { CFG_MODEM_INTF,          CFG_TYPE_ENUM,   "Modem Interface",               "%s", interfaces,   0,  0, 0 },
-#if COMMODORE
+#if COMMERCIAL
     { CFG_MODEM_ACIA,          CFG_TYPE_ENUM,   "ACIA (6551) Mapping",           "%s", acia_mode,    0,  6, 2 },
 #else
     { CFG_MODEM_ACIA,          CFG_TYPE_ENUM,   "ACIA (6551) Mapping",           "%s", acia_mode,    0,  6, 0 },

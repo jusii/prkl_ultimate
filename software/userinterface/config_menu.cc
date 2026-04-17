@@ -270,12 +270,12 @@ int ConfigBrowser :: handle_key(int c)
             state->down(window->get_size_y()/2);
             break;
         case KEY_TASKS:
-            ret = MENU_CLOSE; // do nothing in the non-commodore mode
+            ret = MENU_CLOSE; // do nothing in the non-commercial mode
             break;
         case KEY_HELP:
             reset_quick_seek();
             state->refresh = true;
-#if COMMODORE
+#if COMMERCIAL
             user_interface->run_editor(helptext_wasd, strlen(helptext_wasd));
 #else
             user_interface->run_editor(helptext_ult, strlen(helptext_ult));

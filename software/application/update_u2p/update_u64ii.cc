@@ -108,11 +108,7 @@ void update_esp32(Window* window)
 
 void do_update(void)
 {
-#if COMMODORE
-    setup("\033\025** Commodore 64 Ultimate Updater **\n\033\037");
-#else
-    setup("\033\025** Ultimate 64 Elite-II Updater **\n\033\037");
-#endif
+    setup("\033\025** " ULTIMATE_NAME " Updater **\n\033\037");
 
     Window* window = new Window(screen, 0, 2, screen->get_size_x(), screen->get_size_y() - 3);
     window->draw_border();

@@ -58,7 +58,7 @@ int FileTypeG64 :: fetch_context_items(IndexedList<Action *> &list)
     if(capabilities & CAPAB_DRIVE_1541_1) {
         C64 *machine = C64 :: getMachine();
 
-#if COMMODORE
+#if COMMERCIAL
         // smart mount: check if new and last path are identical
         bool isSame = (node) && smartMountCheckPath(node->getPath());
         if (!isSame) {

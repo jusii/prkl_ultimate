@@ -1,5 +1,5 @@
-WELCOME TO THE OFFICIAL REPOSITORY FOR THE COMMODORE 64 ULTIMATE
-================================================================
+WELCOME TO AN UNOFFICIAL ULTIMATE 64 REPOSITORY
+===============================================
 
 TL;DR
 =====
