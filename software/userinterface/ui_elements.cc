@@ -394,6 +394,7 @@ void UIChoiceBox :: redraw(void)
     window->move_cursor(0, 0);
     window->set_color(get_ui()->color_fg);
     window->set_background(get_ui()->color_bg);
+    window->reverse_mode(0);
     window->output_line(message.c_str());
     window->move_cursor(0, 1);
     window->output_line("");
@@ -410,6 +411,7 @@ void UIChoiceBox :: redraw(void)
         }
         window->output_line(choices[i]);
     }
+    window->reverse_mode(0);
 }
 
 void UIChoiceBox :: deinit(void)

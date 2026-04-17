@@ -550,6 +550,7 @@ int UserInterface :: choice(const char *msg, const char **choices, int count)
     do {
         ret = box->poll(0);
     } while(!ret);
+    box->deinit();
     delete box;
     // Return values are 1 based, unless it's an error
     return (ret > 0) ? (ret - 1) : ret;
