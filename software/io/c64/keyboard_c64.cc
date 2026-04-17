@@ -9,6 +9,7 @@
 #include "task.h"
 #endif
 
+uint8_t g_joyswap = 0; // global joystick swap flag
 uint8_t wasd_to_joy = 0; // overwritten by U64_config, if it exists
 
 const uint8_t modifier_map[] = {
@@ -144,6 +145,7 @@ void Keyboard_C64 :: scan(void)
     uint8_t mtrx = 0x40;
     uint8_t col, row, key = 0xFF;
     uint8_t mod = 0;
+    uint8_t j = 0;
     bool joy = false;
     
     if(!host) {
@@ -158,24 +160,43 @@ void Keyboard_C64 :: scan(void)
     BLING_RX_FLAGS = 0x01; // disable shift lock in bling board
 #endif
 
-    *row_register = 0xFF;
-    *row_register = 0xFF;
+#if U64 == 2
+    // check both joysticks
+    for (j=0;(j<2)&&(!joy);j++) {
+        U64II_KEYB_JOY  = j;
+        C64_PLD_JOYCTRL = (j ^ 1);
+        C64_PADDLE_SWAP = j;
+#endif
 
-    // Scan Joystick Port 2 first
-    *col_register = 0xFF; // deselect keyboard for pure joystick scan
-    *col_register = 0XFF; // delay
+        *row_register = 0xFF;
+        *row_register = 0xFF;
 
-    row = *joy_register;
-    row = *joy_register;
-    if((row & 0x1F) != 0x1F) {
-        joy = true;
-        if     (!(row & 0x01)) { shift_flag = 0x01; mtrx = 0x07; }
-        else if(!(row & 0x02)) { shift_flag = 0x00; mtrx = 0x07; }
-        else if(!(row & 0x04)) { shift_flag = 0x01; mtrx = 0x02; }
-        else if(!(row & 0x08)) { shift_flag = 0x00; mtrx = 0x02; }
-        else if(!(row & 0x10)) { shift_flag = 0x00; mtrx = 0x01; }
+        // Scan Joystick Port 2 first
+        *col_register = 0xFF; // deselect keyboard for pure joystick scan
+        *col_register = 0XFF; // delay
+
+        row = *joy_register;
+        row = *joy_register;
+        if((row & 0x1F) != 0x1F) {
+            joy = true;
+            if     (!(row & 0x01)) { shift_flag = 0x01; mtrx = 0x07; }
+            else if(!(row & 0x02)) { shift_flag = 0x00; mtrx = 0x07; }
+            else if(!(row & 0x04)) { shift_flag = 0x01; mtrx = 0x02; }
+            else if(!(row & 0x08)) { shift_flag = 0x00; mtrx = 0x02; }
+            else if(!(row & 0x10)) { shift_flag = 0x00; mtrx = 0x01; }
+        }
+#if U64 == 2
     }
-    
+
+    // restore user's joystick swap setting
+    if (j != g_joyswap) {
+        j = g_joyswap;
+        U64II_KEYB_JOY  = j;
+        C64_PLD_JOYCTRL = (j ^ 1);;
+        C64_PADDLE_SWAP = j;
+    }
+#endif
+
     // If the joystick was not used, we can safely scan the keyboard
     if(!joy) {
         *col_register = 0; // select all rows of keyboard

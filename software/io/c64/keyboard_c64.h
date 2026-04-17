@@ -4,6 +4,8 @@
 #include "keyboard.h"
 #include "host.h"
 
+extern uint8_t g_joyswap;
+
 #define KEY_BUFFER_SIZE 16
 
 class GenericHost;

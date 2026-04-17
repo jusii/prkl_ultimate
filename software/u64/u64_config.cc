@@ -974,8 +974,9 @@ void U64Config :: effectuate_settings()
     C64_PADDLE_EN    = cfg->get_value(CFG_PADDLE_EN);
     C64_PADDLE_SWAP  = cfg->get_value(CFG_JOYSWAP) & 1;
 #if U64 == 2
-    uint8_t swap = cfg->get_value(CFG_JOYSWAP);
-    U64II_KEYB_JOY     = swap & 1;
+    uint8_t swap = cfg->get_value(CFG_JOYSWAP) & 1;
+    g_joyswap = swap;
+    U64II_KEYB_JOY     = swap;
     static const uint8_t wasd_settings[] = { 0x00, 0x00, 0x01, 0x01, 0x03, 0x03 };
     MATRIX_WASD_TO_JOY = wasd_to_joy = wasd_settings[swap]; 
 #else
@@ -2005,9 +2006,10 @@ int swap_joystick()
     }
 
     ConfigItem *item = u64_configurator->cfg->find_item(CFG_JOYSWAP);
-    int swap = item->getValue();
+    int swap = item->getValue() & 1;
     swap ^= 1;
     item->setValue(swap);
+    g_joyswap = swap;
     U64II_KEYB_JOY  = (uint8_t)swap;
     C64_PLD_JOYCTRL = (uint8_t)(swap ^ 1);
     C64_PADDLE_SWAP = (uint8_t)swap;
