@@ -11,14 +11,16 @@
 #include "screen.h"
 #include "dump_hex.h"
 
-static bool my_memcmp(Screen *screen, void *a, void *b, int len)
+int window_print(Window *w, const char *fmt, ...);
+
+static bool my_memcmp(Window *window, void *a, void *b, int len)
 {
     uint32_t *pula = (uint32_t *)a;
     uint32_t *pulb = (uint32_t *)b;
     len >>= 2;
     while(len--) {
         if(*pula != *pulb) {
-            console_print(screen, "ERR: %p: %8x, %p %8x.\n", pula, *pula, pulb, *pulb);
+            window_print(window, "ERR: %p: %8x, %p %8x.\n", pula, *pula, pulb, *pulb);
             return false;
         }
         pula++;
@@ -27,22 +29,22 @@ static bool my_memcmp(Screen *screen, void *a, void *b, int len)
     return true;
 }
 
-bool flash_buffer(Flash *flash, Screen *screen, int id, void *buffer, void *buf_end, const char *version, const char *descr)
+bool flash_buffer(Flash *flash, Window *window, int id, void *buffer, void *buf_end, const char *version, const char *descr)
 {
 	t_flash_address image_address;
 	flash->get_image_addresses(id, &image_address);
 	int address = image_address.start;
-	return flash_buffer_at(flash, screen, address, image_address.has_header, buffer, buf_end, version, descr);
+	return flash_buffer_at(flash, window, address, image_address.has_header, buffer, buf_end, version, descr);
 }
 
-bool flash_buffer_length(Flash *flash, Screen *screen, int address, bool header, void *buffer, uint32_t length, const char *version, const char *descr)
+bool flash_buffer_length(Flash *flash, Window *window, int address, bool header, void *buffer, uint32_t length, const char *version, const char *descr)
 {
     char *buf_end = (char *)buffer;
     buf_end += length;
-    return flash_buffer_at(flash, screen, address, header, buffer, buf_end, version, descr);
+    return flash_buffer_at(flash, window, address, header, buffer, buf_end, version, descr);
 }
 
-bool flash_buffer_at(Flash *flash, Screen *screen, int address, bool header, void *buffer, void *buf_end, const char *version, const char *descr)
+bool flash_buffer_at(Flash *flash, Window *window, int address, bool header, void *buffer, void *buf_end, const char *version, const char *descr)
 {
 	static int last_sector = -1;
 	int length = (int)buf_end - (int)buffer;
@@ -56,7 +58,7 @@ bool flash_buffer_at(Flash *flash, Screen *screen, int address, bool header, voi
 
     //console_print(screen, "            \n");
     if(header) {
-        console_print(screen, "Flashing  \033\027%s\033\037,\n  version \033\027%s\033\037..\n", descr, version);
+        window_print(window, "Flashing  \033\027%s\033\037,\n  version \033\027%s\033\037..\n", descr, version);
         uint8_t *bin = new uint8_t[length+16];
 
         // For backward compatibility reasons, the length is always stored as BIG ENDIAN
@@ -74,7 +76,7 @@ bool flash_buffer_at(Flash *flash, Screen *screen, int address, bool header, voi
         p = (char *)bin;
     }
     else {
-        console_print(screen, "Flashing  \033\027%s\033\037..      \n", descr);
+        window_print(window, "Flashing \033\027%s\033\021...      \n\n", descr);
         p = (char *)buffer;
     }
 
@@ -93,19 +95,19 @@ bool flash_buffer_at(Flash *flash, Screen *screen, int address, bool header, voi
 				}
 			}
 		}
-        console_print(screen, "Programming %d  \r", page);
+        window_print(window, "Programming %d  \r", page);
         int retry = 3;
         while(retry > 0) {
             retry --;
             if(!flash->write_page(page, p)) {
-                console_print(screen, "Programming error on page %d.\n", page);
+                window_print(window, "Programming error on page %d.\n", page);
                 continue;
             }
             if (do_erase) { // HACK: For AT45, which does not need to erase, we do not verify either; because write page size = 528 and read page size = 512. ;-)
                 flash->read_page(page, verify_buffer);
-                if(!my_memcmp(screen, verify_buffer, p, page_size)) {
-                    console_print(screen, "Verify failed on page %d.\n", page, retry);
-                    // console_print(screen, "%p %p %d\n", verify_buffer, p, page_size);
+                if(!my_memcmp(window, verify_buffer, p, page_size)) {
+                    window_print(window, "Verify failed on page %d.\n", page, retry);
+                    // window_print(window, "%p %p %d\n", verify_buffer, p, page_size);
                     dump_hex_verify(p, verify_buffer, page_size);
                     continue;
                 }

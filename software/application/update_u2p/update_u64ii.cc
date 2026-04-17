@@ -42,6 +42,19 @@ static void status_callback(void *user)
     ui->update_progress(NULL, 1);
 }
 
+int window_print(Window *w, const char *fmt, ...)
+{
+    va_list ap;
+    int ret = -1;
+
+    va_start(ap, fmt);
+    if(w) {
+        ret = _my_vprintf(Window :: _put, (void **)w, fmt, ap);
+    }
+    va_end(ap);
+    return (ret);
+}
+
 void update_esp32_impl(void)
 {
     if (esp32.Download() == 0) {
@@ -68,7 +81,7 @@ void update_esp32_impl(void)
     }
 }
 
-void update_esp32(void)
+void update_esp32(Window* window)
 {
     esp32.EnableRunMode();
     wifi_command_init();
@@ -79,16 +92,16 @@ void update_esp32(void)
     module_detected = wifi_detect(&major, &minor, moduleName, 32);
     module_detected = wifi_detect(&major, &minor, moduleName, 32); // second time should pass
     if (module_detected == pdTRUE) {
-        console_print(screen, "WiFi module detected: %s (%d.%d)\n", moduleName, major, minor);
+        window_print(window, "WiFi module detected: %s (%d.%d)\n", moduleName, major, minor);
         
         // if(user_interface->popup("Want to update the WiFi Module?", BUTTON_YES | BUTTON_NO) == BUTTON_YES) {
         if ((major != IDENT_MAJOR) || (minor != IDENT_MINOR)) {
             update_esp32_impl();
         } else {
-            console_print(screen, "No WiFi module update needed!\n");
+            window_print(window, "No WiFi module update needed!\n");
         }
     } else {
-        console_print(screen, "WiFi module version not detected.\n");
+        window_print(window, "WiFi module version not detected.\n");
         update_esp32_impl();
     }
 }
@@ -100,32 +113,36 @@ void do_update(void)
 #else
     setup("\033\025** Ultimate 64 Elite-II Updater **\n\033\037");
 #endif
+
+    Window* window = new Window(screen, 0, 2, screen->get_size_x(), screen->get_size_y() - 3);
+    window->draw_border();
+
     usb2.initHardware();
 
     Flash *flash2 = get_flash();
-    console_print(screen, "\033\024Detected Flash: %s\n", flash2->get_type_string());
+    window_print(window, "\033\024Detected Flash: %s\n", flash2->get_type_string());
 
     const char *fpgaType = (getFpgaCapabilities() & CAPAB_FPGA_TYPE) ? "5CEBA4" : "5CEBA2";
-    console_print(screen, "Detected FPGA Type: %s.\nBoard Revision: %s\n\033\037\n", fpgaType, getBoardRevision());
+    window_print(window, "Detected FPGA Type: %s.\nBoard Revision: %s\n\033\037\n", fpgaType, getBoardRevision());
 
     /* Extra check on the loaded images */
     const char *check_error = "\033\022\nBAD...\n\nNot flashing.\n";
     const char *check_ok = "\033\025OK!\n\033\037";
 
-    console_print(screen, "\033\027Checking checksums of loaded images..\n");
+    window_print(window, "\033\027Checking checksums of loaded images..\n");
 
-    console_print(screen, "\033\037Checksum of FPGA image:   ");
+    window_print(window, "\033\037Checksum of FPGA image:   ");
     if(calc_checksum((uint8_t *)&_u64_rbf_start, (uint8_t *)&_u64_rbf_end) == CHK_u64_swp) {
-        console_print(screen, check_ok);
+        window_print(window, check_ok);
     } else {
-        console_print(screen, check_error);
+        window_print(window, check_error);
         while(1);
     }
-    console_print(screen, "\033\037Checksum of Application:  ");
+    window_print(window, "\033\037Checksum of Application:  ");
     if(calc_checksum((uint8_t *)&_ultimate_app_start, (uint8_t *)&_ultimate_app_end) == CHK_ultimate_app) {
-        console_print(screen, check_ok);
+        window_print(window, check_ok);
     } else {
-        console_print(screen, check_error);
+        window_print(window, check_error);
         while(1);
     }
 
@@ -151,13 +168,13 @@ void do_update(void)
         write_html_file("index.html", _index_html_start, (int)_index_html_end - (int)_index_html_start);
 
         flash2->protect_disable();
-        flash_buffer_at(flash2, screen, 0x000000, false, &_u64_rbf_start, &_u64_rbf_end,   "V1.0", "Runtime FPGA");
-        flash_buffer_at(flash2, screen, 0x220000, false, &_ultimate_app_start,  &_ultimate_app_end,  "V1.0", "Ultimate Application");
+        flash_buffer_at(flash2, window, 0x000000, false, &_u64_rbf_start, &_u64_rbf_end,   "V1.0", "Runtime FPGA");
+        flash_buffer_at(flash2, window, 0x220000, false, &_ultimate_app_start,  &_ultimate_app_end,  "V1.0", "Ultimate Application");
 
         write_protect(flash2, 4096);
 
 #ifndef NO_ESP
-        update_esp32();
+        update_esp32(window);
 #endif
     }
 

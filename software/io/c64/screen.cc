@@ -362,6 +362,15 @@ void Window :: reverse_mode(int r)
 
 void Window :: output(char c) {
 	parent->output(c);
+#ifdef RECOVERYAPP // ifdef probably not needed, but let's be safe...
+    if (c == '\n') {
+        move_cursor(0, cursor_y+1);
+    }
+    else
+    if (c == '\r') {
+        move_cursor(0, cursor_y);
+    }
+#endif
 }
 
 void Window :: output(const char *string)

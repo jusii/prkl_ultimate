@@ -176,6 +176,11 @@ public:
     virtual void  set_char(int x, int y, char);
 
     void  dump(void);
+    
+    // Static
+    static void _put(char c, void **obj) {
+    	((Window *)obj)->output(c);
+    }
 };
 
 int console_print(Screen *screen, const char *fmt, ...);
