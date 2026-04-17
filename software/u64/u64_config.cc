@@ -835,7 +835,9 @@ U64Config :: U64Config() : SubSystem(SUBSYSID_U64)
 		sidDevice[0] = NULL;
         sidDevice[1] = NULL;
 
+#if 0
         cfg->disable(CFG_MODEL);
+#endif
         cfg->set_change_hook(CFG_SCAN_MODE_TEST, U64Config::setScanMode);
         cfg->set_change_hook(CFG_COLOR_CLOCK_ADJ, U64Config::setPllOffset);
         cfg->set_change_hook(CFG_HDMI_TX_SWING, U64Config::setScanMode);
