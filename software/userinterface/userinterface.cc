@@ -480,21 +480,22 @@ void UserInterface :: set_screen_title()
         screen->clear();
         char color_code[3] = "\e6";
         color_code[1] = logo_color[0];
+        screen->output("\e1");
+        screen->output("X=RST Z=REB");
         screen->output(color_code);
-        screen->output("\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12\x1c");
         screen->output(logo_title[0]);
         screen->move_cursor(28, 0);
-        screen->output(color_code);
-        screen->output("\er\x1e\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12");
+        screen->output("\e1");
+        screen->output(" B=CYC O=OFF");
         screen->move_cursor(0, 1);
 
         color_code[1] = logo_color[1];
         screen->output(color_code);
-        screen->output("\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x1d");
+        screen->output("\x0b\x0b\x0b\x0b" "C=" "\x0b\x0b\x0b\x0b\x1d");
         screen->output(logo_title[1]);
         screen->move_cursor(28, 1);
         screen->output(color_code);
-        screen->output("\er\x1f\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b");
+        screen->output("\er\x1f\x0b\x0b\x0b\x0b" "C=" "\x0b\x0b\x0b\x0b\x0b");
     } else {
         int len = title.length();
         int hpos = (width - len) / 2;

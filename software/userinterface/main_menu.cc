@@ -96,6 +96,7 @@ MainMenu :: MainMenu(UserInterface *ui) : ContextMenu(ui, NULL, 0, 0, MENU_HIDE,
     appendAction(new Action("BUILT-IN DRIVE B", S_cfg_page, e_drive_b));
     //appendAction(new Action("ADVANCED SETTINGS", S_advanced, 0));
     appendAction(new Action("SYSTEM INFORMATION", S_sysinfo, 0));
+    appendAction(new Action("PRKL ADDITIONS", S_prkl_about, 0));
     appendAction(new Action("LICENSE INFORMATION", S_licenses, 0));
 
     // Instantiate and attach the root tree browser
@@ -309,5 +310,22 @@ SubsysResultCode_e MainMenu :: S_licenses(Action *act, void *context)
     menu->user_interface->run_editor(pLicenseText, strlen(pLicenseText));
     menu->draw();
 
+    return SSRET_OK;
+}
+
+static const char prkl_about_text[] =
+    "USB Mouse: Joystick Settings\n"
+    "\n"
+    "Hotkeys (C= +):\n"
+    "  X  Reset        J  Joystick swap\n"
+    "  Z  Reboot       L  Show log\n"
+    "  B  Power Cycle\n"
+    "  O  Power Off\n";
+
+SubsysResultCode_e MainMenu :: S_prkl_about(Action *act, void *context)
+{
+    ContextMenu *menu = (ContextMenu *)context;
+    menu->user_interface->run_editor(prkl_about_text, strlen(prkl_about_text));
+    menu->draw();
     return SSRET_OK;
 }
