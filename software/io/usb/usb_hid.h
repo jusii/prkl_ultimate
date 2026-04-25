@@ -22,6 +22,10 @@ class UsbHidDriver : public UsbDriver
     bool keyboard;
     bool mouse;
     int16_t mouse_x, mouse_y;
+    int16_t mouse_rem_x, mouse_rem_y;
+    uint8_t mouse_auto_div;
+    uint16_t mouse_burst_count;
+    uint16_t mouse_calm_count;
 #if USE_HID_REPORT
     t_item_location rep_button1;
     t_item_location rep_button2;

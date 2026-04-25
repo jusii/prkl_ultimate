@@ -11,6 +11,12 @@
 #include "keyboard_usb.h"
 #include "u64.h"
 
+// USB mouse → 1351 scaling. Written by U64Config::effectuate_settings().
+// Divisor is 1/2/4/8; auto-scale may raise the effective divisor when the
+// USB report deltas are too large for the 1351's 7-bit quadrature to track.
+uint8_t g_usb_mouse_divisor  = 1;
+uint8_t g_usb_mouse_autoscale = 1;
+
 // Entry point for call-backs.
 void UsbHidDriver_interrupt_callback(void *object) {
 	((UsbHidDriver *)object)->interrupt_handler();
@@ -33,6 +39,10 @@ UsbHidDriver :: UsbHidDriver(UsbInterface *intf) : UsbDriver(intf)
     keyboard = false;
     mouse = false;
     mouse_x = mouse_y = 0;
+    mouse_rem_x = mouse_rem_y = 0;
+    mouse_auto_div = 1;
+    mouse_burst_count = 0;
+    mouse_calm_count = 0;
 }
 
 UsbHidDriver :: ~UsbHidDriver()
@@ -151,23 +161,60 @@ void UsbHidDriver :: interrupt_handler()
 		system_usb_keyboard.process_data(irq_data);
 	} else if (mouse) { // mouse
         uint8_t mouse_joy = 0x1F;
+        int xx, yy;
 
 #if USE_HID_REPORT
         if (HidReport::getValueFromData(irq_data, rep_button1)) mouse_joy &= ~0x10;
         if (HidReport::getValueFromData(irq_data, rep_button2)) mouse_joy &= ~0x01;
         if (HidReport::getValueFromData(irq_data, rep_button3)) mouse_joy &= ~0x02;
-        int xx = HidReport::getValueFromData(irq_data, rep_mouse_x);
-        int yy = HidReport::getValueFromData(irq_data, rep_mouse_y);
-        mouse_x += xx; 
-        mouse_y -= yy;
-        // printf("Mouse: %08x, %08x => %4x,%4x %b\n", xx, yy, mouse_x, mouse_y, mouse_joy);
+        xx = HidReport::getValueFromData(irq_data, rep_mouse_x);
+        yy = HidReport::getValueFromData(irq_data, rep_mouse_y);
 #else
         if (irq_data[0] & 1) mouse_joy &= ~0x10;
         if (irq_data[0] & 2) mouse_joy &= ~0x01;
         if (irq_data[0] & 4) mouse_joy &= ~0x02;
-        mouse_x += (int8_t)irq_data[1];
-        mouse_y -= (int8_t)irq_data[2];
+        xx = (int8_t)irq_data[1];
+        yy = (int8_t)irq_data[2];
 #endif
+
+        // Auto-scale: the 1351 carries 7-bit quadrature so the C64 driver
+        // misreads any inter-poll delta > 63 as reverse motion. We take
+        // |delta| >= 40 in a single USB report as a rollover-risk signal,
+        // and step the effective divisor up to compress high-DPI motion.
+        int mag_x = (xx < 0) ? -xx : xx;
+        int mag_y = (yy < 0) ? -yy : yy;
+        int mag   = (mag_x > mag_y) ? mag_x : mag_y;
+
+        if (g_usb_mouse_autoscale) {
+            if (mag >= 40) {
+                mouse_calm_count = 0;
+                if (++mouse_burst_count >= 3 && mouse_auto_div < 8) {
+                    mouse_auto_div <<= 1;
+                    mouse_burst_count = 0;
+                }
+            } else {
+                if (mouse_burst_count) mouse_burst_count--;
+                if (mouse_auto_div > 1 && ++mouse_calm_count >= 2000) {
+                    mouse_auto_div >>= 1;
+                    mouse_calm_count = 0;
+                }
+            }
+        } else {
+            mouse_auto_div = 1;
+            mouse_burst_count = 0;
+            mouse_calm_count = 0;
+        }
+
+        int div = g_usb_mouse_divisor;
+        if (mouse_auto_div > div) div = mouse_auto_div;
+        if (div < 1) div = 1;
+
+        mouse_rem_x += xx;
+        mouse_rem_y -= yy;
+        mouse_x += mouse_rem_x / div;
+        mouse_y += mouse_rem_y / div;
+        mouse_rem_x %= div;
+        mouse_rem_y %= div;
 
 #if U64
         C64_JOY1_SWOUT = mouse_joy;

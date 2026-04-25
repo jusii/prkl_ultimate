@@ -140,6 +140,8 @@ static SemaphoreHandle_t resetSemaphore;
 #define CFG_SPEED_PREF        0x52
 #define CFG_BADLINES_EN       0x53
 #define CFG_SUPERCPU_DET      0x54
+#define CFG_USB_MOUSE_DIVISOR 0x55
+#define CFG_USB_MOUSE_AUTOSCALE 0x56
 
 #define CFG_SCAN_MODE_TEST    0xA8
 #define CFG_VIC_TEST          0xA9
@@ -227,6 +229,7 @@ const char *sid_split[] = { "Off", "1/2 (A5)", "1/2 (A6)", "1/2 (A7)", "1/2 (A8)
 static const char *models[] = { "BASIC Beige", "Starlight Edition", "Founders Edition" };
 static const char *iec_modes[] = { "All Connected", "C64U <-> Internal", "Ext. <-> Int.", "C64U <-> External" };
 static const char *joyswaps[] = { "Normal", "Swapped", "WASD Port 2", "WASD Port 1", "WASD P2 No KB", "WASD P1 No KB" };
+static const char *usb_mouse_div[] = { "1", "2", "4", "8" };
 static const char *en_dis5[] = { "Disabled", "Enabled", "Transp. Border" };
 static const char *digi_levels[] = { "Off", "Low", "Medium", "High" };
 static const char *burst_modes[] = { "Off", "CIA1", "CIA2" };
@@ -327,6 +330,8 @@ struct t_cfg_definition u64_cfg[] = {
 #endif
     { CFG_BADLINES_EN,          CFG_TYPE_ENUM, "Badline Timing",               "%s", en_dis,       0,  1, 1 },
     { CFG_SUPERCPU_DET,         CFG_TYPE_ENUM, "SuperCPU Detect (D0BC)",       "%s", en_dis,       0,  1, 0 },
+    { CFG_USB_MOUSE_DIVISOR,    CFG_TYPE_ENUM, "USB Mouse Divisor",            "%s", usb_mouse_div,0,  3, 0 },
+    { CFG_USB_MOUSE_AUTOSCALE,  CFG_TYPE_ENUM, "USB Mouse Auto-Scale",         "%s", en_dis,       0,  1, 1 },
     { CFG_TYPE_END,             CFG_TYPE_END,  "",                             "",   NULL,         0,  0, 0 } };
 
 struct t_cfg_definition u64_sid_detection_cfg[] = {
@@ -970,8 +975,13 @@ void U64Config :: run_reset_task()
 void U64Config :: effectuate_settings()
 {
     extern uint8_t wasd_to_joy;
+    extern uint8_t g_usb_mouse_divisor;
+    extern uint8_t g_usb_mouse_autoscale;
     if(!cfg)
         return;
+
+    g_usb_mouse_divisor   = (uint8_t)(1 << cfg->get_value(CFG_USB_MOUSE_DIVISOR));
+    g_usb_mouse_autoscale = (uint8_t) cfg->get_value(CFG_USB_MOUSE_AUTOSCALE);
 
     C64_PADDLE_EN    = cfg->get_value(CFG_PADDLE_EN);
     C64_PADDLE_SWAP  = cfg->get_value(CFG_JOYSWAP) & 1;
