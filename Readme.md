@@ -1,15 +1,23 @@
-WELCOME TO AN ULTIMATE 64 REPOSITORY (unofficial but Spiffy!)
-=============================================================
-This is an "unofficial" project adding and enhancing Assembly64 support for the C64 Ultimate.
-It's based on Gideon's 1541ultimate project - his "branded" source tree [v1.1.0](https://github.com/GideonZ/1541ultimate/commits/1.1.0).
-Multiple servers can be configured via a configuration file.
-You can also add custom servers and run an Assembly server on your local network, allowing your Ultimate to access files from your PC.
+WELCOME TO PRKL_ULTIMATE (unofficial — based on Spiffy)
+=======================================================
+This is **prkl_ultimate**, an unofficial fork of [Spiffy_Ultimate](https://github.com/spiffycrew/Spiffy_Ultimate) — which is itself an unofficial fork of Gideon Zweijtzer's [1541ultimate v1.1.0](https://github.com/GideonZ/1541ultimate/commits/1.1.0).
 
-We added a new kickstart utility to load and run firmware on the fly, without modifying the flash memory. Great for development - or for temporarily adding features.
+prkl preserves everything Spiffy added (Assembly64 multi-server config, the kickstart RAM-loader, custom branding, dual-joystick menu, hotkeys, flash-protection hardening) and layers a few focused C64 Ultimate II behavior changes on top. The Spiffy material below is unchanged and still describes how those features work.
 
-It also includes several additional changes, such as hotkeys, dual‑joystick controls for the menu system, and a few minor bug fixes - small issues we stumbled upon along the way, some of which seem popular.
+The project is also known as the "Prkl Patch". ⛧⚡
 
-The project is also known as the "Spiffy Patch". 👀😀
+---
+
+## What prkl changes about the C64 Ultimate II
+
+### USB mouse — high-DPI support
+The 1351 mouse interface carries 7-bit quadrature on the SID POT X/Y lines, so any single-poll delta greater than 63 wraps and the C64 reads it as reverse motion. High-DPI USB mice trip this on fast movement.
+
+- **Configurable divisor (1×/2×/4×/8×)** with fractional remainder, so slow motion at higher divisors isn't truncated away.
+- **Auto-scale**: when |delta| ≥ 40 shows up in three successive USB reports, the divisor doubles (cap 8×); after ~2000 calm packets it steps back down.
+- Two new config items in the U64 config menu: **USB Mouse Divisor** and **USB Mouse Auto-Scale**. Defaults preserve legacy behavior — low-DPI mice feel native.
+
+*(More changes will be listed here as the fork grows.)*
 
 ---
 
