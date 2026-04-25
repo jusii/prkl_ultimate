@@ -60,7 +60,7 @@ static const char *helptext =
         "\n"
         "C= X:       C64 Reset (Spiffy!)\n"
         "C= Z:       C64 Reboot (Spiffy!)\n"
-        "C= B:       Power Cylce (Spiffy!)\n"
+        "C= B:       Power Cycle (Spiffy!)\n"
         "C= O:       Power OFF (Spiffy!)\n"
         "\n"
         "HOME:       Enter home directory\n"
