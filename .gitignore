@@ -280,6 +280,8 @@ software/6502/sidcrt/target
 *.d
 tools/dump_bus_trace
 tools/64tass/*.o
+tools/64tass/64tass
+software/u64ctrl/build/
 /chars/
 .vscode
 .idea
