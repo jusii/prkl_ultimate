@@ -5,6 +5,12 @@ This program is free software: you can redistribute it and/or modify it under th
 
 The following open source projects and respective licenses are used:
 
+Prkl Patch
+==========
+License: GPLv3
+Copyright Jusii et al.
+https://github.com/jusii/prkl_ultimate
+
 Spiffy Patch
 ============
 License: GPLv3
