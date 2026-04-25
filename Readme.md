@@ -2,13 +2,13 @@ WELCOME TO PRKL_ULTIMATE (unofficial — based on Spiffy)
 =======================================================
 This is **prkl_ultimate**, an unofficial fork of [Spiffy_Ultimate](https://github.com/spiffycrew/Spiffy_Ultimate) — which is itself an unofficial fork of Gideon Zweijtzer's [1541ultimate v1.1.0](https://github.com/GideonZ/1541ultimate/commits/1.1.0).
 
-prkl preserves everything Spiffy added (Assembly64 multi-server config, the kickstart RAM-loader, custom branding, dual-joystick menu, hotkeys, flash-protection hardening) and layers a few focused C64 Ultimate II behavior changes on top. The Spiffy material below is unchanged and still describes how those features work.
+prkl preserves everything Spiffy added (Assembly64 multi-server config, the kickstart RAM-loader, custom branding, dual-joystick menu, hotkeys, flash-protection hardening) and layers a few focused Commodore 64 Ultimate behavior changes on top. The Spiffy material below is unchanged and still describes how those features work.
 
 The project is also known as the "Prkl Patch". ⛧⚡
 
 ---
 
-## What prkl changes about the C64 Ultimate II
+## What prkl changes about the Commodore 64 Ultimate
 
 ### USB mouse — high-DPI support
 The 1351 mouse interface carries 7-bit quadrature on the SID POT X/Y lines, so any single-poll delta greater than 63 wraps and the C64 reads it as reverse motion. High-DPI USB mice trip this on fast movement.
