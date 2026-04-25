@@ -41,7 +41,6 @@ UsbHidDriver :: UsbHidDriver(UsbInterface *intf) : UsbDriver(intf)
     mouse_x = mouse_y = 0;
     mouse_rem_x = mouse_rem_y = 0;
     mouse_auto_div = 1;
-    mouse_burst_count = 0;
     mouse_calm_count = 0;
 }
 
@@ -177,36 +176,39 @@ void UsbHidDriver :: interrupt_handler()
         yy = (int8_t)irq_data[2];
 #endif
 
-        // Auto-scale: the 1351 carries 7-bit quadrature so the C64 driver
-        // misreads any inter-poll delta > 63 as reverse motion. We take
-        // |delta| >= 40 in a single USB report as a rollover-risk signal,
-        // and step the effective divisor up to compress high-DPI motion.
+        // 1351 carries 7-bit signed quadrature, so the C64 driver misreads
+        // any inter-poll delta > 63 as reverse motion. Pick the smallest
+        // power-of-2 divisor that keeps |delta|/div under ~50 (safety margin
+        // below 63). Step up immediately on the offending report; step down
+        // gradually after a calm period so we don't oscillate.
         int mag_x = (xx < 0) ? -xx : xx;
         int mag_y = (yy < 0) ? -yy : yy;
         int mag   = (mag_x > mag_y) ? mag_x : mag_y;
 
+        int div;
         if (g_usb_mouse_autoscale) {
-            if (mag >= 40) {
+            uint8_t needed = 1;
+            if      (mag > 200) needed = 8;
+            else if (mag > 100) needed = 4;
+            else if (mag >  50) needed = 2;
+
+            if (needed > mouse_auto_div) {
+                mouse_auto_div = needed;
                 mouse_calm_count = 0;
-                if (++mouse_burst_count >= 3 && mouse_auto_div < 8) {
-                    mouse_auto_div <<= 1;
-                    mouse_burst_count = 0;
-                }
-            } else {
-                if (mouse_burst_count) mouse_burst_count--;
-                if (mouse_auto_div > 1 && ++mouse_calm_count >= 2000) {
+            } else if (mag < 25 && mouse_auto_div > 1) {
+                if (++mouse_calm_count >= 500) {
                     mouse_auto_div >>= 1;
                     mouse_calm_count = 0;
                 }
+            } else {
+                mouse_calm_count = 0;
             }
+            div = mouse_auto_div;
         } else {
             mouse_auto_div = 1;
-            mouse_burst_count = 0;
             mouse_calm_count = 0;
+            div = g_usb_mouse_divisor;
         }
-
-        int div = g_usb_mouse_divisor;
-        if (mouse_auto_div > div) div = mouse_auto_div;
         if (div < 1) div = 1;
 
         mouse_rem_x += xx;

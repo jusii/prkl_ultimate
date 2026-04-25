@@ -2506,6 +2506,13 @@ void U64Config :: setup_config_menu(void)
     grp->append(cfg->find_item(CFG_JOYSWAP)->set_item_altname("Joystick Input"));
     grp->append(sidaddressing.cfg->find_item(CFG_PADDLE_EN));
     grp->append(ConfigItem :: separator());
+    grp->append(ConfigItem :: heading("USB Mouse"));
+    grp->append(cfg->find_item(CFG_USB_MOUSE_AUTOSCALE)->set_item_altname("Auto-Scale"));
+    grp->append(cfg->find_item(CFG_USB_MOUSE_DIVISOR)->set_item_altname("Manual Divisor"));
+    grp->append(ConfigItem :: heading("Auto-Scale picks divisor as needed."));
+    grp->append(ConfigItem :: heading("Manual Divisor: used only when"));
+    grp->append(ConfigItem :: heading("Auto-Scale is off. Higher = slower."));
+    grp->append(ConfigItem :: separator());
     grp->append(ConfigItem :: heading("Note: When WASD Joystick emulation"));
     grp->append(ConfigItem :: heading("is enabled, hold [CTRL] to type the"));
     grp->append(ConfigItem :: heading("W, A, S, D and RETURN characters."));
