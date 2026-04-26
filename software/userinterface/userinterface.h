@@ -39,6 +39,7 @@
 #define CFG_USERIF_FILENAME_OVERFLOW_SQUEEZE 0x0C
 #define CFG_USERIF_NAVIGATION  0x0D
 #define CFG_USERIF_COLORSCHEME 0x0E
+#define CFG_USERIF_PRKL_BANNER 0x0F
 
 typedef enum {
     e_keymap_default,
@@ -68,6 +69,7 @@ public:
     int config_save, filename_overflow_squeeze, navmode;
     bool logo;
     bool heap_info;
+    bool prkl_banner_hotkeys;
     char* logo_title[2];
     int logo_color[2];
     GenericHost *host;

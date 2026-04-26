@@ -91,6 +91,7 @@ static const char *filename_overflow_squeeze[] = { "None", "Beginning", "Middle"
 static const char *itype[]      = { "Freeze", "Overlay on HDMI" };
 static const char *cfg_save[]   = { "No", "Ask", "Yes" };
 static const char *navstyles[] = { "Quick Search", "WASD Cursors" };
+static const char *off_on[]    = { "Off", "On" };
 
 struct t_cfg_definition user_if_config[] = {
 #if U64
@@ -113,7 +114,10 @@ struct t_cfg_definition user_if_config[] = {
     { CFG_USERIF_CFG_SAVE,   CFG_TYPE_ENUM,   "Auto Save Config",      "%s", cfg_save, 0, 2, 1 },
     { CFG_USERIF_ULTICOPY_NAME, CFG_TYPE_ENUM, "Ulticopy Uses disk name", "%s", en_dis, 0, 1, 1 },
     { CFG_USERIF_FILENAME_OVERFLOW_SQUEEZE, CFG_TYPE_ENUM, "Filename overflow squeeze", "%s", filename_overflow_squeeze, 0, 3, 0 },
-    { CFG_TYPE_END,           CFG_TYPE_END,    "", "", NULL, 0, 0, 0 }         
+#if COMMERCIAL
+    { CFG_USERIF_PRKL_BANNER, CFG_TYPE_ENUM,   "Prkl Banner Hotkeys",   "%s", off_on, 0, 1, 1 },
+#endif
+    { CFG_TYPE_END,           CFG_TYPE_END,    "", "", NULL, 0, 0, 0 }
 };
 
 UserInterface :: UserInterface(const char *title, bool use_logo) : title(title)
@@ -130,6 +134,7 @@ UserInterface :: UserInterface(const char *title, bool use_logo) : title(title)
     menu_response_to_action = MENU_NOP;
     logo = use_logo;
     heap_info = false;
+    prkl_banner_hotkeys = true;
 
     logo_title[0] = "\e2    SIXTY FOUR ";
     logo_title[1] = "  \eR\e1\x1a  ULTIMATE  \x1a\er ";
@@ -192,9 +197,18 @@ void UserInterface :: effectuate_settings(void)
     config_save  = cfg->get_value(CFG_USERIF_CFG_SAVE);
     filename_overflow_squeeze = cfg->get_value(CFG_USERIF_FILENAME_OVERFLOW_SQUEEZE);
     navmode      = cfg->get_value(CFG_USERIF_NAVIGATION);
+#if COMMERCIAL
+    prkl_banner_hotkeys = cfg->get_value(CFG_USERIF_PRKL_BANNER) != 0;
+#else
+    prkl_banner_hotkeys = false;
+#endif
 
-    if(host && host->is_accessible())
+    if(host && host->is_accessible()) {
         host->set_colors(color_bg, color_border);
+        if (screen) {
+            set_screen_title();
+        }
+    }
 
     // push_event(e_refresh_browser); TODO
 }
@@ -480,22 +494,40 @@ void UserInterface :: set_screen_title()
         screen->clear();
         char color_code[3] = "\e6";
         color_code[1] = logo_color[0];
-        screen->output("\e1");
-        screen->output("X=RST Z=REB");
+        if (prkl_banner_hotkeys) {
+            screen->output("\e1");
+            screen->output("X=RST Z=REB");
+        } else {
+            screen->output(color_code);
+            screen->output("\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12\x1c");
+        }
         screen->output(color_code);
         screen->output(logo_title[0]);
         screen->move_cursor(28, 0);
-        screen->output("\e1");
-        screen->output(" B=CYC O=OFF");
+        if (prkl_banner_hotkeys) {
+            screen->output("\e1");
+            screen->output(" B=CYC O=OFF");
+        } else {
+            screen->output(color_code);
+            screen->output("\er\x1e\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12");
+        }
         screen->move_cursor(0, 1);
 
         color_code[1] = logo_color[1];
         screen->output(color_code);
-        screen->output("\x0b\x0b\x0b\x0b" "C=" "\x0b\x0b\x0b\x0b\x1d");
+        if (prkl_banner_hotkeys) {
+            screen->output("\x0b\x0b\x0b\x0b" "C=" "\x0b\x0b\x0b\x0b\x1d");
+        } else {
+            screen->output("\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x1d");
+        }
         screen->output(logo_title[1]);
         screen->move_cursor(28, 1);
         screen->output(color_code);
-        screen->output("\er\x1f\x0b\x0b\x0b\x0b" "C=" "\x0b\x0b\x0b\x0b\x0b");
+        if (prkl_banner_hotkeys) {
+            screen->output("\er\x1f\x0b\x0b\x0b\x0b" "C=" "\x0b\x0b\x0b\x0b\x0b");
+        } else {
+            screen->output("\er\x1f\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b");
+        }
     } else {
         int len = title.length();
         int hpos = (width - len) / 2;

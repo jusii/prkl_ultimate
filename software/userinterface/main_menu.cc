@@ -314,9 +314,10 @@ SubsysResultCode_e MainMenu :: S_licenses(Action *act, void *context)
 }
 
 static const char prkl_about_text[] =
-    "USB Mouse: Joystick Settings\n"
+    "USB Mouse:     Joystick Settings\n"
+    "Banner toggle: User Interface Settings\n"
     "\n"
-    "Hotkeys (C= +):\n"
+    "Spiffy Hotkeys (C= +):\n"
     "  X  Reset        J  Joystick swap\n"
     "  Z  Reboot       L  Show log\n"
     "  B  Power Cycle\n"
