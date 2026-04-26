@@ -13,7 +13,7 @@ The project is also known as the "Prkl Patch". ⛧⚡
 ### USB mouse — high-DPI support
 The 1351 mouse interface carries 7-bit quadrature on the SID POT X/Y lines, so any single-poll delta greater than 63 wraps and the C64 reads it as reverse motion. High-DPI USB mice trip this on fast movement.
 
-- **Configurable divisor (1×/2×/4×/8×)** with fractional remainder, so slow motion at higher divisors isn't truncated away.
+- **Configurable divisor (1..16, integer)** with fractional remainder, so slow motion at higher divisors isn't truncated away. Higher = slower.
 - **Auto-scale**: when |delta| ≥ 40 shows up in three successive USB reports, the divisor doubles (cap 8×); after ~2000 calm packets it steps back down.
 - Two new config items in the U64 config menu: **USB Mouse Divisor** and **USB Mouse Auto-Scale**. Defaults preserve legacy behavior — low-DPI mice feel native.
 
