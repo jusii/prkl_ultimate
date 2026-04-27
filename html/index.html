@@ -1033,7 +1033,43 @@ $(document).ready(async function () {
         $('#streamsctrl').show();
     });
 
+    function openInPlayer(kind, address) {
+        // Parse "ip[:port]" from the input field. If port is missing, use the
+        // default for this stream kind.
+        let defaultPort = { video: 11000, audio: 11001, debug: 11002 }[kind];
+        let parts = (address || '').trim().split(':');
+        let ip = parts[0] || '';
+        let port = (parts[1] && /^\d+$/.test(parts[1])) ? parts[1] : defaultPort;
+
+        // Multicast vs unicast: if the IP is in 224.0.0.0/4 (224..239 first
+        // octet), the player has to JOIN that multicast group, so the URL
+        // includes the IP (udp://@<group>:<port>). For unicast the device
+        // sends directly to the receiver, so the player just binds to its
+        // own interface (udp://@:<port>, no IP).
+        let firstOctet = parseInt((ip.split('.')[0] || ''), 10);
+        let isMulticast = firstOctet >= 224 && firstOctet <= 239;
+        let host = isMulticast ? ip : '';
+
+        // u64://... is the vlc-u64stream plugin's URL scheme (decodes the
+        // U64 raster-scan packet format). Audio/debug streams aren't
+        // U64-encoded, so plain udp:// is correct.
+        let scheme = (kind === 'video') ? 'u64' : 'udp';
+        let m3u = '#EXTM3U\n#EXTINF:-1,U64 ' + kind + '\n' + scheme + '://@' + host + ':' + port + '\n';
+        let blob = new Blob([m3u], { type: 'audio/x-mpegurl' });
+        let url = URL.createObjectURL(blob);
+        let a = document.createElement('a');
+        a.href = url;
+        a.download = 'u64-' + kind + '.m3u';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    }
+
     ['video', 'audio', 'debug'].forEach(function (kind) {
+        $('#streamopen_' + kind).click(function () {
+            openInPlayer(kind, $('#streamip_' + kind).val());
+        });
         $('#streamstart_' + kind).click(async function () {
             let ip = $('#streamip_' + kind).val().trim();
             if (!ip) {
@@ -1972,12 +2008,13 @@ function disassembler(startInt, byteArray) {
         <div id="streamsctrl" class="page">
             <h1>Data Streams</h1>
             <p>Start/stop UDP streams. Defaults are <b>multicast</b> (239.0.1.64–66) — receiver joins the group, no ARP/host lookup needed. Unicast IPs work too if the host is up on your LAN.</p>
-            <p>The video and audio streams use the U64 II's custom packet format; <b>VLC and ffplay can't decode them directly</b> — use Gideon's "U64 Stream Viewer" or a compatible decoder.</p>
+
             <div class="streamrow">
                 <label>Video</label>
                 <input type="text" id="streamip_video" value="239.0.1.64:11000">
                 <input type="button" id="streamstart_video" value="Start">
                 <input type="button" id="streamstop_video" value="Stop">
+                <input type="button" id="streamopen_video" value="Open in Player" title="Download .m3u that opens your default UDP-capable player">
                 <span id="streamstatus_video" class="streamstatus"></span>
             </div>
             <div class="streamrow">
@@ -1985,6 +2022,7 @@ function disassembler(startInt, byteArray) {
                 <input type="text" id="streamip_audio" value="239.0.1.65:11001">
                 <input type="button" id="streamstart_audio" value="Start">
                 <input type="button" id="streamstop_audio" value="Stop">
+                <input type="button" id="streamopen_audio" value="Open in Player">
                 <span id="streamstatus_audio" class="streamstatus"></span>
             </div>
             <div class="streamrow">
@@ -1992,11 +2030,22 @@ function disassembler(startInt, byteArray) {
                 <input type="text" id="streamip_debug" value="239.0.1.66:11002">
                 <input type="button" id="streamstart_debug" value="Start">
                 <input type="button" id="streamstop_debug" value="Stop">
+                <input type="button" id="streamopen_debug" value="Open in Player">
                 <span id="streamstatus_debug" class="streamstatus"></span>
             </div>
             <p style="font-size: 0.9em; color: #666;">
                 Note: starting a Video stream automatically stops Debug.
             </p>
+
+            <h2 style="margin-top: 1.5em;">Players</h2>
+            <p>The video stream uses the U64 II's custom raster-scan packet format
+            (<a href="https://1541u-documentation.readthedocs.io/en/latest/data_streams.html" target="_blank" rel="noopener">spec</a>).
+            Plain VLC/ffplay just see opaque packet noise — you need a decoder. Options:</p>
+            <ul style="font-size: 0.95em;">
+                <li><a href="https://github.com/jusii/vlc-u64stream" target="_blank" rel="noopener"><b>vlc-u64stream</b></a> — VLC plugin (open source, Linux / macOS / Windows). Install the platform-specific module into VLC's plugins dir (Linux: <code>~/.local/share/vlc/plugins/</code>); the <b>Open in Player</b> buttons above hand off a <code>u64://</code> URL via <code>.m3u</code> and VLC plays it natively. Recommended.</li>
+                <li><a href="https://github.com/DusteDdk/u64view" target="_blank" rel="noopener"><b>u64view</b></a> — standalone C viewer (WTFPL). Linux + macOS, source-tweakable.</li>
+                <li><a href="https://tsb.space/sdm_downloads/u64streamer/" target="_blank" rel="noopener"><b>U64 Streamer</b></a> by tsb — Windows binary, closed source.</li>
+            </ul>
         </div>
     </div>
 </body>

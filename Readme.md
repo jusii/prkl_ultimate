@@ -20,8 +20,18 @@ The 1351 mouse interface carries 7-bit quadrature on the SID POT X/Y lines, so a
 ### Web UI additions
 Two new pages in the on-device web UI (browse to `http://<your-device>/`):
 
-- **C64 Screen** — live view of the C64 text screen ($0400 + $D800 color RAM), polled at 4 Hz via `/v1/machine:readmem`. Pause / Snapshot (PNG) buttons. Works for any text-mode program (BASIC, GEOS-text, most game menus). Bitmap modes won't render correctly.
-- **Data Streams** — start/stop UDP video/audio/debug streams to a target IP, hits the existing `/v1/streams:start/...` endpoints. Receive with VLC or `ffplay`.
+- **C64 Screen** — pixel-accurate render of the C64 text screen ($0400 + $D800 + $D018) using the genuine Commodore character ROM, embedded in the page as base64. Single snapshot by default; **Refresh** for a fresh frame, **Play / Pause** for live polling at 4 Hz. Auto-detects:
+  - Charset 1 vs 2 (uppercase/graphics vs lowercase/uppercase) from `$D018` bit 1.
+  - C64 ROM vs U64 II menu font (when the device's own menu is on screen) via a multi-signal heuristic on row 24 (F-key footer), row 1 (banner text) and decoration density. Manual override buttons available.
+  Reads pause the 6510 briefly via DMA but don't disturb the active U64 menu (firmware patch — see below). Bitmap modes won't render correctly.
+- **Data Streams** — start/stop UDP video/audio/debug streams to a target IP, hits `/v1/streams/<kind>:start` and `:stop`. Defaults to multicast (`239.0.1.64-66`). Each row has an **Open in Player** button that generates a `.m3u` your default player opens; for video the URL uses the `u64://` scheme handled by the [vlc-u64stream](https://github.com/jusii/vlc-u64stream) plugin (drop the `.so` into `~/.local/share/vlc/plugins/` to install). Auto-detects multicast vs unicast in the IP field and emits the right player URL form (`u64://@<group>:port` for multicast, `u64://@:port` for unicast).
+
+#### Firmware fixes that the web UI depends on
+Three small patches in `software/io/network/data_streamer.cc` and `software/io/c64/c64_subsys.cc`:
+
+- `ipaddr_aton` is tried before `gethostbyname_r` for stream destinations — lwIP in this build doesn't fall back to `inet_aton` for literal IPs, so plain `192.168.x.y` would fail at the resolve step. Now literal IPs work.
+- ARP probing on stream-start uses one persistent UDP socket for all retries (was open/close per probe, which cancelled the pending UDP send and its triggered ARP request before lwIP could resolve). Total ARP budget bumped to ~2.5 s.
+- `dma_load_raw_buffer` skips `release_host()` when called for a *read* (rw=1). The original code unconditionally kicked the U64 menu off the C64 every time anything called `readmem`, dropping the user back to BASIC. Reads are now transparent to the menu; writes still take the full release path.
 
 #### Updating the on-device HTML
 Important: SoftPatch (kickstart) only loads `ultimate.app` into RAM and never touches the flash filesystem. The web UI HTML lives at `/Flash/html/index.html` on the device and is only written by full **FlashPatch / `update.ue2`** runs. So after a SoftPatch boot, the on-device HTML still reflects whatever was there last.

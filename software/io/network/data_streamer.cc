@@ -204,13 +204,30 @@ SubsysResultCode_e DataStreamer :: startStream(SubsysCommand *cmd)
     } else if (stream->dest_ip == 0xFFFFFFFF) {
         printf("** User requested Broadcast stream\n");
     } else {
-        bool ok = false;
-        for(int i=0;i<10;i++) {
-            send_udp_packet(query_ip, stream->dest_port);
-            vTaskDelay(20);
-            if (intf->peekArpTable(query_ip, stream->dest_mac)) {
-                ok = true;
-                break;
+        // Check ARP cache first. If miss, open ONE persistent UDP socket and
+        // send probe packets across multiple retries -- the original code
+        // opened/closed a fresh socket each iteration, which appears to cancel
+        // the pending UDP send (and its triggered ARP request) before lwip
+        // can resolve. Total budget ~2.5 seconds.
+        bool ok = intf->peekArpTable(query_ip, stream->dest_mac);
+        if (!ok) {
+            int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+            if (sockfd >= 0) {
+                struct sockaddr_in server;
+                memset(&server, 0, sizeof(server));
+                server.sin_family = AF_INET;
+                server.sin_addr.s_addr = query_ip;
+                server.sin_port = htons(stream->dest_port);
+                uint8_t probe[2] = { 0, 0 };
+                for (int i = 0; !ok && i < 50; i++) {
+                    sendto(sockfd, probe, 2, 0, (const struct sockaddr*)&server, sizeof(server));
+                    vTaskDelay(50);
+                    if (intf->peekArpTable(query_ip, stream->dest_mac)) {
+                        ok = true;
+                        break;
+                    }
+                }
+                lwip_close(sockfd);
             }
         }
         if (ok) {
