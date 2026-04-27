@@ -524,7 +524,10 @@ int C64_Subsys :: dma_load_raw(File *f)
 int C64_Subsys :: dma_load_raw_buffer(uint16_t offset, uint8_t *buffer, int length, int rw)
 {
     bool i_stopped_it = false;
-    if (c64->client) {
+    // For writes we need exclusive access -- release any active UI client so
+    // it doesn't see partial state. For reads (rw==1) the memcpy is
+    // non-destructive: don't kick the menu off the C64 just to peek at RAM.
+    if (!rw && c64->client) {
         c64->client->release_host(); // disconnect from user interface
         c64->release_ownership();
     }

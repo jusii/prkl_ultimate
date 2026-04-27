@@ -848,6 +848,209 @@ $(document).ready(async function () {
         greetings: 'Ultimate 64 Remote Monitor\nhelp = list of commands\n'
     });
 
+    // === C64 Screen viewer ===
+    // Default: a single snapshot when the page is opened. User clicks Play to
+    // get a live feed; clicking again pauses. Avoids constant readmem traffic
+    // when the user just wants to glance at the screen.
+    let screenInterval = null;
+    let screenPaused = true;
+
+    // C64 palette (Pepto-style approximation), RGB triplets
+    const c64paletteRGB = [
+        [0,0,0],[255,255,255],[104,55,43],[112,164,178],
+        [111,61,134],[88,141,67],[53,40,121],[184,199,111],
+        [111,79,37],[67,57,0],[154,103,89],[68,68,68],
+        [108,108,108],[154,210,132],[108,94,181],[149,149,149]
+    ];
+
+    // C64 character ROM 901225-01 (4096 bytes = 2 charsets x 2048):
+    //   bytes 0x000-0x7FF = charset 1 (uppercase + graphics) — default at boot
+    //   bytes 0x800-0xFFF = charset 2 (lowercase + uppercase) — after SHIFT+C=
+    // VIC register $D018 bit 1 selects which charset is active.
+    const charROM_b64 = "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ZjwOAHxmZnx4bGYAPGZgPAZmPAB+GBgYGBgYAGZmZmZmZjwAZmZmZmY8GABjY2Nrf3djAGZmPBg8ZmYAZmZmPBgYGAB+BgwYMGB+ABgYGP//GBgYwMAwMMDAMDAYGBgYGBgYGDMzzMwzM8zMM5nMZjOZzGYAAAAAAAAAAPDw8PDw8PDwAAAAAP//////AAAAAAAAAAAAAAAAAAD/wMDAwMDAwMDMzDMzzMwzMwMDAwMDAwMDAAAAAMzMMzPMmTNmzJkzZgMDAwMDAwMDGBgYHx8YGBgAAAAADw8PDxgYGB8fAAAAAAAA+PgYGBgAAAAAAAD//wAAAB8fGBgYGBgY//8AAAAAAAD//xgYGBgYGPj4GBgYwMDAwMDAwMDg4ODg4ODg4AcHBwcHBwcH//8AAAAAAAD///8AAAAAAAAAAAAA////AQMGbHhwYAAAAAAA8PDw8A8PDw8AAAAAGBgY+PgAAADw8PDwAAAAAPDw8PAPDw8Pw5mRkZ+Zw////8P5wZnB//+fn4OZmYP////Dn5+fw///+fnBmZnB////w5mBn8P///Hnwefn5////8GZmcH5g/+fn4OZmZn//+f/x+fnw///+f/5+fn5w/+fn5OHk5n//8fn5+fnw////5mAgJSc////g5mZmZn////DmZmZw////4OZmYOfn///wZmZwfn5//+DmZ+fn////8Gfw/mD///ngefn5/H///+ZmZmZwf///5mZmcPn////nJSAwcn///+Zw+fDmf///5mZmcHzh///gfPnz4H/w8/Pz8/Pw//z7c+Dz50D/8Pz8/Pz88P//+fDgefn5+f/78+AgM/v////////////5+fn5///5/+ZmZn//////5mZAJkAmZn/58Gfw/mD5/+dmfPnz5m5/8OZw8eYmcD/+fPn///////z58/Pz+fz/8/n8/Pz58///5nDAMOZ////5+eB5+f/////////5+fP////gf///////////+fn///8+fPnz5//w5mRiZmZw//n58fn5+eB/8OZ+fPPn4H/w5n54/mZw//58eGZgPn5/4Gfg/n5mcP/w5mfg5mZw/+BmfPn5+fn/8OZmcOZmcP/w5mZwfmZw////+f//+f/////5///5+fP8efPn8/n8f///4H/gf///4/n8/nz54//w5n58+f/5/////8AAP///+fDmYGZmZn/g5mZg5mZg//DmZ+fn5nD/4eTmZmZk4f/gZ+fh5+fgf+Bn5+Hn5+f/8OZn5GZmcP/mZmZgZmZmf/D5+fn5+fD/+Hz8/Pzk8f/mZOHj4eTmf+fn5+fn5+B/5yIgJScnJz/mYmBgZGZmf/DmZmZmZnD/4OZmYOfn5//w5mZmZnD8f+DmZmDh5OZ/8OZn8P5mcP/gefn5+fn5/+ZmZmZmZnD/5mZmZmZw+f/nJyclICInP+ZmcPnw5mZ/5mZmcPn5+f/gfnz58+fgf/n5+cAAOfn5z8/z88/P8/P5+fn5+fn5+fMzDMzzMwzM8xmM5nMZjOZ//////////8PDw8PDw8PD/////8AAAAAAP//////////////////AD8/Pz8/Pz8/MzPMzDMzzMz8/Pz8/Pz8/P////8zM8zMM2bMmTNmzJn8/Pz8/Pz8/Ofn5+Dg5+fn//////Dw8PDn5+fg4P///////wcH5+fn////////AAD////g4Ofn5+fn5wAA////////AADn5+fn5+cHB+fn5z8/Pz8/Pz8/Hx8fHx8fHx/4+Pj4+Pj4+AAA////////AAAA/////////////wAAAP78+ZOHj5///////w8PDw/w8PDw/////+fn5wcH////Dw8PD/////8PDw8P8PDw8A==";
+
+    // U64 II menu font (256 chars × 8 bytes), used when the device shows its own
+    // overlay/menu screens. Different glyph layout than the C64 ROM — graphics
+    // chars at 0x60-0x7F, etc.
+    const menuFont_b64 = "AAAAAAAAAAAAAAAfHxgYGAAAAP//AAAAAAAA+PgYGBgYGBgYGBgYGBgYGB8fAAAAGBgY+PgAAAAAAAAHDxwYGAAAAP//GBgYAAAA4PA4GBgYGBgfHxgYGAD/////////GBgY+PgYGBgYGBj//wAAABgYHA8HAAAAGBg48OAAAAAAOG1nZm47ADxmZmxmZmxg/////////wAYPH7/fjwYAAAAAAEDAwcHAD////DAgIAAgIDA8P//PwAAAAAA/PjwBwcHAwMBAAAA8Pj8AAAAAAA8fn5+fjwAAAAAAAAAAAD//vz48ODAAADA4PD4/P7//38/Hw8HAwAAAwcPHz9//wAAAAAAAAAAGBgYGAAAGABmZmYAAAAAAGZm/2b/ZmYAGD5gPAZ8GABiZgwYMGZGADxmPDhnZj8ABgwYAAAAAAAMGDAwMBgMADAYDAwMGDAAAGY8/zxmAAAAGBh+GBgAAAAAAAAAGBgwAAAAfgAAAAAAAAAAABgYAAADBgwYMGAAPGZudmZmPAAYGDgYGBh+ADxmBgwwYH4APGYGHAZmPAAGDh5mfwYGAH5gfAYGZjwAPGZgfGZmPAB+ZgwYGBgYADxmZjxmZjwAPGZmPgZmPAAAABgAABgAAAAAGAAAGBgwDhgwYDAYDgAAAH4AfgAAAHAYDAYMGHAAPGYGDBgAGAA8Zm5uYGI8ABg8Zn5mZmYAfGZmfGZmfAA8ZmBgYGY8AHhsZmZmbHgAfmBgeGBgfgB+YGB4YGBgADxmYG5mZjwAZmZmfmZmZgA8GBgYGBg8AB4MDAwMbDgAZmx4cHhsZgBgYGBgYGB+AGN3f2tjY2MAZnZ+fm5mZgA8ZmZmZmY8AHxmZnxgYGAAPGZmZmY8DgB8ZmZ8eGxmADxmYDwGZjwAfhgYGBgYGABmZmZmZmY8AGZmZmZmPBgAY2Nja393YwBmZjwYPGZmAGZmZjwYGBgAfgYMGDBgfgA8MDAwMDA8AABgMBgMBgMAPAwMDAwMPAAYPGYAAAAAAAAAAAAAAAD/GAwGAAAAAAAAADwGPmY+AABgYHxmZnwAAAA8YGBgPAAABgY+ZmY+AAAAPGZ+YDwAAA4YPhgYGAAAAD5mZj4GfABgYHxmZmYAABgAOBgYPAAABgAGBgYGPABgYGx4bGYAADgYGBgYPAAAAGZ/f2tjAAAAfGZmZmYAAAA8ZmZmPAAAAHxmZnxgYAAAPmZmPgYGAAB8ZmBgYAAAAD5gPAZ8AAAYfhgYGA4AAABmZmZmPgAAAGZmZjwYAAAAY2t/PjYAAABmPBg8ZgAAAGZmZj4MeAAAfgwYMH4ADBgYMBgYDAAYGBgYGBgYADAYGAwYGDAAAHBaDgAAAAAAfkJCQkJ+AP//////////////4ODn5+f///8AAP///////wcH5+fn5+fn5+fn5+fn5+fg4P///+fn5wcH////////+PDj5+f///8AAOfn5////x8Px+fn5+fn4ODn5+fn5+cAAOfn5+fn5wcH5+fn5+fj8Pj////n5+cAAP///+fnxw8f////////////////////////////////////58OBAIHD5///////////////////////////////////////////////////////////////////w4GBgYHD/////////////////////////////////////////////////////////////////+fn5+f//+f/mZmZ//////+ZmQCZAJmZ/+fBn8P5g+f/nZnz58+Zuf/DmcPHmJnA//nz5///////8+fPz8/n8//P5/Pz8+fP//+ZwwDDmf///+fngefn/////////+fnz////4H////////////n5////Pnz58+f/8OZkYmZmcP/5+fH5+fngf/Dmfnzz5+B/8OZ+eP5mcP/+fHhmYD5+f+Bn4P5+ZnD/8OZn4OZmcP/gZnz5+fn5//DmZnDmZnD/8OZmcH5mcP////n///n/////+f//+fnz/Hnz5/P5/H///+B/4H///+P5/P58+eP/8OZ+fPn/+f/w5mRkZ+dw//nw5mBmZmZ/4OZmYOZmYP/w5mfn5+Zw/+Hk5mZmZOH/4Gfn4efn4H/gZ+fh5+fn//DmZ+RmZnD/5mZmYGZmZn/w+fn5+fnw//h8/Pz85PH/5mTh4+Hk5n/n5+fn5+fgf+ciICUnJyc/5mJgYGRmZn/w5mZmZmZw/+DmZmDn5+f/8OZmZmZw/H/g5mZg4eTmf/DmZ/D+ZnD/4Hn5+fn5+f/mZmZmZmZw/+ZmZmZmcPn/5ycnJSAiJz/mZnD58OZmf+ZmZnD5+fn/4H58+fPn4H/w8/Pz8/Pw///n8/n8/n8/8Pz8/Pz88P/58OZ////////////////AOfz+f/////////D+cGZwf//n5+DmZmD////w5+fn8P///n5wZmZwf///8OZgZ/D///x58Hn5+f////BmZnB+YP/n5+DmZmZ///n/8fn58P///n/+fn5+cP/n5+Th5OZ///H5+fn58P///+ZgICUnP///4OZmZmZ////w5mZmcP///+DmZmDn5///8GZmcH5+f//g5mfn5/////Bn8P5g///54Hn5+fx////mZmZmcH///+ZmZnD5////5yUgMHJ////mcPnw5n///+ZmZnB84f//4Hz58+B//Pn58/n5/P/5+fn5+fn5//P5+fz5+fP//+PpfH//////4G9vb29gf8=";
+
+    let charROM = null;
+    let menuFont = null;
+    function decodeFonts() {
+        const a = atob(charROM_b64);
+        charROM = new Uint8Array(a.length);
+        for (let i = 0; i < a.length; i++) charROM[i] = a.charCodeAt(i);
+        const b = atob(menuFont_b64);
+        menuFont = new Uint8Array(b.length);
+        for (let i = 0; i < b.length; i++) menuFont[i] = b.charCodeAt(i);
+    }
+    decodeFonts();
+    let charsetBase = 0; // 0 = charset 1 (default), 0x800 = charset 2
+    let fontMode = 'auto'; // 'auto' | 'c64' | 'menu'
+
+    // Decode a row of C64 screen RAM (40 cells) into ASCII, treating charset 1
+    // codes (0x01-0x1A = A-Z, 0x40-0x5F passthrough) so we can pattern-match.
+    function rowToAscii(buf, row) {
+        let s = '';
+        for (let i = 0; i < 40; i++) {
+            let c = buf[row * 40 + i] & 0x7f;
+            if (c === 0) s += '@';
+            else if (c >= 1 && c <= 26) s += String.fromCharCode(0x40 + c);
+            else if (c >= 0x20 && c <= 0x5f) s += String.fromCharCode(c);
+            else s += ' ';
+        }
+        return s;
+    }
+
+    function detectMenuMode(buf) {
+        let score = 0;
+
+        // Signal 1: F-key footer pattern at row 24 (e.g. "F1=MENU", "F7=HELP",
+        // "F3/F5=PGUP/DN"). Two or more F-digit-equals patterns is very
+        // menu-specific.
+        let row24 = rowToAscii(buf, 24);
+        let fkeys = (row24.match(/F\d=/g) || []).length;
+        if (fkeys >= 2) score += 2;
+
+        // Signal 2: "ULTIMATE" or "COMMODORE" banner text on row 1.
+        let row1 = rowToAscii(buf, 1);
+        if (row1.indexOf('ULTIMATE') !== -1 || row1.indexOf('COMMODORE') !== -1) {
+            score += 2;
+        }
+
+        // Signal 3: high density of cells in 0x60-0x7F (border/decoration chars
+        // in the menu font). Confirms even when text-detection misses.
+        let menuish = 0;
+        for (let k = 0; k < 1000; k++) {
+            let c = buf[k] & 0x7f;
+            if (c >= 0x60 && c <= 0x7f) menuish++;
+        }
+        if (menuish > 150) score += 1;
+
+        return score >= 2;
+    }
+
+    async function refreshScreen(force) {
+        if (screenPaused && !force) return;
+        if (!$('#screenview').is(':visible')) return;
+        let chars = await make_binary_get_request("http://" + serverIP + "/v1/machine:readmem", { address: '0400', length: 1000 });
+        let cols  = await make_binary_get_request("http://" + serverIP + "/v1/machine:readmem", { address: 'd800', length: 1000 });
+        let d018  = await make_binary_get_request("http://" + serverIP + "/v1/machine:readmem", { address: 'd018', length: 1 });
+        if (chars[0] !== 200 || cols[0] !== 200) {
+            $('#screenstatus').text('Read failed (' + chars[0] + '/' + cols[0] + ')');
+            return;
+        }
+        if (d018[0] === 200 && d018[1].length === 1) {
+            // bit 1: 0 = charset 1 (uppercase+graphics), 1 = charset 2 (lowercase+uppercase)
+            charsetBase = (d018[1][0] & 0x02) ? 0x800 : 0;
+        }
+
+        // Pick font: menu font for U64 II overlay screens, C64 ROM otherwise.
+        // Auto detection uses three signals; >=2 hits = menu.
+        let useMenuFont;
+        if (fontMode === 'c64') useMenuFont = false;
+        else if (fontMode === 'menu') useMenuFont = true;
+        else useMenuFont = detectMenuMode(chars[1]);
+        const activeROM = useMenuFont ? menuFont : charROM;
+        const activeBase = useMenuFont ? 0 : charsetBase;
+        let canvas = document.getElementById('screencanvas');
+        let ctx = canvas.getContext('2d');
+        let img = ctx.createImageData(canvas.width, canvas.height);
+        let data = img.data;
+        let bg = c64paletteRGB[6]; // BLUE — C64 default screen bg
+        for (let p = 0; p < data.length; p += 4) {
+            data[p] = bg[0]; data[p+1] = bg[1]; data[p+2] = bg[2]; data[p+3] = 255;
+        }
+        for (let y = 0; y < 25; y++) {
+            for (let x = 0; x < 40; x++) {
+                let i = y * 40 + x;
+                let code = chars[1][i] & 0xff;
+                let fg = c64paletteRGB[cols[1][i] & 0x0f];
+                let romOffset = activeBase + (code & 0x7f) * 8;
+                if (useMenuFont) romOffset = (code & 0x7f) * 8;
+                let invert = (code & 0x80) ? 0xff : 0x00;
+                for (let row = 0; row < 8; row++) {
+                    let bits = activeROM[romOffset + row] ^ invert;
+                    let pxRow = (y * 8 + row) * canvas.width;
+                    for (let col = 0; col < 8; col++) {
+                        if (bits & (0x80 >> col)) {
+                            let p = (pxRow + x * 8 + col) * 4;
+                            data[p] = fg[0]; data[p+1] = fg[1]; data[p+2] = fg[2];
+                        }
+                    }
+                }
+            }
+        }
+        ctx.putImageData(img, 0, 0);
+        $('#screenstatus').text((screenPaused ? 'Snapshot · ' : 'Live · ') + new Date().toLocaleTimeString());
+    }
+
+    $('#showscreenview').click(function (e) {
+        e.preventDefault();
+        $('.page').hide();
+        $('#screenview').show();
+        // Take one snapshot every time the page is shown. Live polling is
+        // opt-in via the Play button.
+        refreshScreen(true);
+    });
+
+    $('#screenpause').click(function () {
+        if (screenPaused) {
+            screenPaused = false;
+            $('#screenpause').val('Pause');
+            refreshScreen();
+            if (screenInterval === null) {
+                screenInterval = setInterval(refreshScreen, 250);
+            }
+        } else {
+            screenPaused = true;
+            $('#screenpause').val('Play');
+            if (screenInterval !== null) {
+                clearInterval(screenInterval);
+                screenInterval = null;
+            }
+        }
+    });
+
+    $('#screenrefresh').click(function () { refreshScreen(true); });
+
+    $('#screenfont_auto').click(function () { fontMode = 'auto'; refreshScreen(true); });
+    $('#screenfont_c64').click(function () { fontMode = 'c64'; refreshScreen(true); });
+    $('#screenfont_menu').click(function () { fontMode = 'menu'; refreshScreen(true); });
+
+    $('#screensnapshot').click(function () {
+        let canvas = document.getElementById('screencanvas');
+        let link = document.createElement('a');
+        link.download = 'c64-screen-' + Date.now() + '.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    });
+
+    // === Streams ===
+    $('#showstreams').click(function (e) {
+        e.preventDefault();
+        $('.page').hide();
+        $('#streamsctrl').show();
+    });
+
+    ['video', 'audio', 'debug'].forEach(function (kind) {
+        $('#streamstart_' + kind).click(async function () {
+            let ip = $('#streamip_' + kind).val().trim();
+            if (!ip) {
+                $('#streamstatus_' + kind).text('Enter target IP');
+                return;
+            }
+            $('#streamstatus_' + kind).text('Starting...');
+            let [code] = await make_put_request('http://' + serverIP + '/v1/streams/' + kind + ':start', { ip: ip });
+            $('#streamstatus_' + kind).text(code === 200 ? ('Started → ' + ip) : ('Failed (' + code + ')'));
+        });
+        $('#streamstop_' + kind).click(async function () {
+            $('#streamstatus_' + kind).text('Stopping...');
+            let [code] = await make_put_request('http://' + serverIP + '/v1/streams/' + kind + ':stop', {});
+            $('#streamstatus_' + kind).text(code === 200 ? 'Stopped' : ('Failed (' + code + ')'));
+        });
+    });
+
     // Kick off login/welcome screen as needed
     await ensureLoggedIn();
 });
@@ -1395,6 +1598,42 @@ function disassembler(startInt, byteArray) {
         padding: 20px;
         display:none;
     }
+    #screenview {
+        flex-grow: 1;
+        padding: 20px;
+        display: none;
+    }
+    #streamsctrl {
+        flex-grow: 1;
+        padding: 20px;
+        display: none;
+    }
+    .screencanvas {
+        background: #352879;
+        image-rendering: pixelated;
+        border: 16px solid #6C5EB5;
+        width: 640px;
+        height: 480px;
+    }
+    .streamrow {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+    .streamrow label {
+        width: 60px;
+        font-weight: bold;
+    }
+    .streamrow input[type=text] {
+        width: 200px;
+        padding: 4px;
+    }
+    .streamstatus {
+        margin-left: 1em;
+        color: #888;
+        font-size: 0.9em;
+    }
     #sidplay {
         flex-grow: 1;
         padding: 20px;
@@ -1577,6 +1816,8 @@ function disassembler(startInt, byteArray) {
                 <li><a id="showrunner" href="#">Execute PRG / CRT</a></li>
                 <li><a id="showterminal"  href="#">Live Monitor</a></li>
                 <li><a id="showtokenizer"  href="#">BASIC Editor</a></li>
+                <li><a id="showscreenview" href="#">C64 Screen</a></li>
+                <li><a id="showstreams"    href="#">Data Streams</a></li>
             </ul>
             <ul>
                 <li><a id="doreset" href="#">Reset Machine</a></li>
@@ -1702,6 +1943,60 @@ function disassembler(startInt, byteArray) {
             <div><b>Special characters:</b></div>
             <div id="tableContainer"></div>
 
+        </div>
+
+        <div id="screenview" class="page">
+            <h1>C64 Screen</h1>
+            <p>Snapshot of the C64 text screen ($0400 + $D800 color RAM). Click
+            <b>Refresh</b> for a fresh frame, or <b>Play</b> to poll continuously
+            (4 Hz). Works for text-mode programs (BASIC, menus, GEOS-text);
+            bitmap modes won't render correctly.</p>
+            <p style="font-size: 0.9em; color: #666;">
+            Note: each refresh briefly pauses the 6510 to DMA-read C64 RAM. Harmless
+            for menus, BASIC, and most programs, but a vbl-tight demo or running
+            disk operation may glitch slightly during Live polling. Use single
+            <b>Refresh</b> if you need a non-intrusive look.</p>
+            <canvas id="screencanvas" class="screencanvas" width="320" height="200"></canvas>
+            <div style="margin-top:10px;">
+                <input type="button" id="screenpause" value="Play">
+                <input type="button" id="screenrefresh" value="Refresh">
+                <input type="button" id="screensnapshot" value="Snapshot (PNG)">
+                <span style="margin-left:1em;">Font:</span>
+                <input type="button" id="screenfont_auto" value="Auto" title="Heuristic switch">
+                <input type="button" id="screenfont_c64"  value="C64">
+                <input type="button" id="screenfont_menu" value="U64 Menu">
+                <span id="screenstatus" style="margin-left: 1em; color: #888;"></span>
+            </div>
+        </div>
+
+        <div id="streamsctrl" class="page">
+            <h1>Data Streams</h1>
+            <p>Start/stop UDP streams. Defaults are <b>multicast</b> (239.0.1.64–66) — receiver joins the group, no ARP/host lookup needed. Unicast IPs work too if the host is up on your LAN.</p>
+            <p>The video and audio streams use the U64 II's custom packet format; <b>VLC and ffplay can't decode them directly</b> — use Gideon's "U64 Stream Viewer" or a compatible decoder.</p>
+            <div class="streamrow">
+                <label>Video</label>
+                <input type="text" id="streamip_video" value="239.0.1.64:11000">
+                <input type="button" id="streamstart_video" value="Start">
+                <input type="button" id="streamstop_video" value="Stop">
+                <span id="streamstatus_video" class="streamstatus"></span>
+            </div>
+            <div class="streamrow">
+                <label>Audio</label>
+                <input type="text" id="streamip_audio" value="239.0.1.65:11001">
+                <input type="button" id="streamstart_audio" value="Start">
+                <input type="button" id="streamstop_audio" value="Stop">
+                <span id="streamstatus_audio" class="streamstatus"></span>
+            </div>
+            <div class="streamrow">
+                <label>Debug</label>
+                <input type="text" id="streamip_debug" value="239.0.1.66:11002">
+                <input type="button" id="streamstart_debug" value="Start">
+                <input type="button" id="streamstop_debug" value="Stop">
+                <span id="streamstatus_debug" class="streamstatus"></span>
+            </div>
+            <p style="font-size: 0.9em; color: #666;">
+                Note: starting a Video stream automatically stops Debug.
+            </p>
         </div>
     </div>
 </body>

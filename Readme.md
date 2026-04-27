@@ -17,6 +17,21 @@ The 1351 mouse interface carries 7-bit quadrature on the SID POT X/Y lines, so a
 - **Auto-scale**: when |delta| ≥ 40 shows up in three successive USB reports, the divisor doubles (cap 8×); after ~2000 calm packets it steps back down.
 - Two new config items in the U64 config menu: **USB Mouse Divisor** and **USB Mouse Auto-Scale**. Defaults preserve legacy behavior — low-DPI mice feel native.
 
+### Web UI additions
+Two new pages in the on-device web UI (browse to `http://<your-device>/`):
+
+- **C64 Screen** — live view of the C64 text screen ($0400 + $D800 color RAM), polled at 4 Hz via `/v1/machine:readmem`. Pause / Snapshot (PNG) buttons. Works for any text-mode program (BASIC, GEOS-text, most game menus). Bitmap modes won't render correctly.
+- **Data Streams** — start/stop UDP video/audio/debug streams to a target IP, hits the existing `/v1/streams:start/...` endpoints. Receive with VLC or `ffplay`.
+
+#### Updating the on-device HTML
+Important: SoftPatch (kickstart) only loads `ultimate.app` into RAM and never touches the flash filesystem. The web UI HTML lives at `/Flash/html/index.html` on the device and is only written by full **FlashPatch / `update.ue2`** runs. So after a SoftPatch boot, the on-device HTML still reflects whatever was there last.
+
+To deploy `html/index.html` without re-flashing:
+
+    ./upload-html.sh <device-ip-or-hostname>
+
+(default host is `c64u`). The script FTPs the file to `/Flash/html/index.html`. Refresh the browser to see changes. The upload survives reboots and SoftPatches; a full FlashPatch will overwrite it with whatever HTML is bundled in the update binary.
+
 *(More changes will be listed here as the fork grows.)*
 
 ---

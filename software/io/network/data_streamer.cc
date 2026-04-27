@@ -156,19 +156,26 @@ SubsysResultCode_e DataStreamer :: startStream(SubsysCommand *cmd)
         }
     }
 
-    int error;
-    struct hostent my_host, *ret_host;
-    char buffer[128];
-    int result = gethostbyname_r(dest_host, &my_host, buffer, 128, &ret_host, &error);
+    // Try literal IPv4 first (gethostbyname_r in this lwIP build doesn't
+    // fall back to inet_aton for literal IPs, so "192.168.1.10" otherwise
+    // fails outright). Only do DNS if it isn't a dotted-quad.
+    ip_addr_t literal_ip;
+    if (ipaddr_aton(dest_host, &literal_ip)) {
+        stream->dest_ip = literal_ip.addr;
+    } else {
+        int error;
+        struct hostent my_host, *ret_host;
+        char buffer[128];
+        gethostbyname_r(dest_host, &my_host, buffer, 128, &ret_host, &error);
 
-    if (!ret_host) {
-        if (cmd->user_interface) cmd->user_interface->popup("Host could not be resolved.", BUTTON_OK);
-        else printf("Host '%s' could not be resolved.", dest_host);
-        return SSRET_NETWORK_RESOLVE_ERROR;
+        if (!ret_host) {
+            if (cmd->user_interface) cmd->user_interface->popup("Host could not be resolved.", BUTTON_OK);
+            else printf("Host '%s' could not be resolved.", dest_host);
+            return SSRET_NETWORK_RESOLVE_ERROR;
+        }
+        uint32_t *addrs = (uint32_t *)*(ret_host->h_addr_list);
+        stream->dest_ip = addrs[0];
     }
-    uint32_t *addrs = (uint32_t *)*(ret_host->h_addr_list);
-
-    stream->dest_ip = addrs[0];
 
     uint32_t query_ip = stream->dest_ip;
     if ((stream->dest_ip & ip.ipaddr32[1]) != (ip.ipaddr32[2] & ip.ipaddr32[1])) {
