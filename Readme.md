@@ -33,14 +33,28 @@ Three small patches in `software/io/network/data_streamer.cc` and `software/io/c
 - ARP probing on stream-start uses one persistent UDP socket for all retries (was open/close per probe, which cancelled the pending UDP send and its triggered ARP request before lwIP could resolve). Total ARP budget bumped to ~2.5 s.
 - `dma_load_raw_buffer` skips `release_host()` when called for a *read* (rw=1). The original code unconditionally kicked the U64 menu off the C64 every time anything called `readmem`, dropping the user back to BASIC. Reads are now transparent to the menu; writes still take the full release path.
 
+#### Prebuilt binaries
+Two prkl-stamped binaries are committed at the repo root for each release so users don't need the Docker build env to test:
+
+- **`Prkl_SoftPatch_<version>.ue2`** — the kickstart RAM-loader. Drop into `/Temp/` on the device, run from the menu (or via [quickstart.sh](quickstart.sh)). No flash writes; power-cycle returns to whatever's flashed.
+- **`Prkl_FlashPatch_<version>.ue2`** — programs `ultimate.app` to flash via the kickburn flow. Permanent. **See warning below.**
+
+#### Flashing the FlashPatch — warning
+Spiffy's general kickburn warning applies (see [Building / Other Make Targets](#other-make-targets) section below) but a few prkl-specific notes:
+
+- **The kickburn flow only rewrites `ultimate.app`.** It doesn't touch the FPGA bitstream or the `/Flash/` filesystem (HTML, ROMs, carts). So the worst case from a bad prkl ultimate.app is "the firmware doesn't boot" — which the device's recovery / FPGA-side fallback can usually recover from. JTAG-bricking is *very unlikely* unless something has gone catastrophically wrong with the FPGA bitstream itself.
+- **Kickburn does not prompt for "Erase Flash?"** That prompt only appears in full `update.ue2` runs that may shuffle FPGA/ROM partitions. If you see it, you're running the wrong binary.
+- **Kickburn does not bundle/install HTML.** `SRCS_HTML` is intentionally commented out in `target/u64ii/riscv/kickburn/Makefile`. After flashing, your `/Flash/html/index.html` stays whatever it was — typically whatever the last full `update.ue2` wrote. Use `upload-html.sh` to ship prkl's UI changes alongside.
+- **Test SoftPatch first.** Always run a fresh build as kickstart before committing to flash. If the kickstarted version misbehaves, just power-cycle.
+
 #### Updating the on-device HTML
-Important: SoftPatch (kickstart) only loads `ultimate.app` into RAM and never touches the flash filesystem. The web UI HTML lives at `/Flash/html/index.html` on the device and is only written by full **FlashPatch / `update.ue2`** runs. So after a SoftPatch boot, the on-device HTML still reflects whatever was there last.
+SoftPatch (kickstart) only loads `ultimate.app` into RAM and never touches the flash filesystem. **FlashPatch (kickburn) doesn't touch HTML either** — only the full `update.ue2` does (see the `target/u64ii/riscv/update/Makefile` `SRCS_HTML = index.html` line vs. kickstart/kickburn where it's commented out). So the web UI HTML stays as written by the last full `update.ue2`, plus any `upload-html.sh` overlays.
 
 To deploy `html/index.html` without re-flashing:
 
     ./upload-html.sh <device-ip-or-hostname>
 
-(default host is `c64u`). The script FTPs the file to `/Flash/html/index.html`. Refresh the browser to see changes. The upload survives reboots and SoftPatches; a full FlashPatch will overwrite it with whatever HTML is bundled in the update binary.
+(default host is `c64u`). The script FTPs the file to `/Flash/html/index.html`. Refresh the browser to see changes. The upload survives reboots, SoftPatches, and FlashPatches; a full `update.ue2` will overwrite it with whatever HTML is bundled in the update binary.
 
 *(More changes will be listed here as the fork grows.)*
 
