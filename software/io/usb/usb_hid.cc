@@ -11,11 +11,10 @@
 #include "keyboard_usb.h"
 #include "u64.h"
 
-// USB mouse → 1351 scaling. Written by U64Config::effectuate_settings().
-// Divisor is 1/2/4/8; auto-scale may raise the effective divisor when the
-// USB report deltas are too large for the 1351's 7-bit quadrature to track.
-uint8_t g_usb_mouse_divisor  = 1;
-uint8_t g_usb_mouse_autoscale = 1;
+// User sensitivity scale (output = input * num / den). Written by
+// U64Config::effectuate_settings(). Default Normal = 1/1 (pass-through).
+uint8_t g_usb_mouse_scale_num = 1;
+uint8_t g_usb_mouse_scale_den = 1;
 
 // Entry point for call-backs.
 void UsbHidDriver_interrupt_callback(void *object) {
@@ -39,9 +38,8 @@ UsbHidDriver :: UsbHidDriver(UsbInterface *intf) : UsbDriver(intf)
     keyboard = false;
     mouse = false;
     mouse_x = mouse_y = 0;
-    mouse_rem_x = mouse_rem_y = 0;
-    mouse_auto_div = 1;
-    mouse_calm_count = 0;
+    mouse_pending_x = mouse_pending_y = 0;
+    mouse_scale_acc_x = mouse_scale_acc_y = 0;
 }
 
 UsbHidDriver :: ~UsbHidDriver()
@@ -176,47 +174,37 @@ void UsbHidDriver :: interrupt_handler()
         yy = (int8_t)irq_data[2];
 #endif
 
+        // User sensitivity scale: output = input * num / den, with a remainder
+        // accumulator so fractional motion is never lost across poll cycles.
+        int sx = mouse_scale_acc_x + xx * g_usb_mouse_scale_num;
+        int sy = mouse_scale_acc_y + yy * g_usb_mouse_scale_num;
+        int den = g_usb_mouse_scale_den;
+        int xx_scaled = sx / den;
+        int yy_scaled = sy / den;
+        mouse_scale_acc_x = (int16_t)(sx - xx_scaled * den);
+        mouse_scale_acc_y = (int16_t)(sy - yy_scaled * den);
+
         // 1351 carries 7-bit signed quadrature, so the C64 driver misreads
-        // any inter-poll delta > 63 as reverse motion. Pick the smallest
-        // power-of-2 divisor that keeps |delta|/div under ~50 (safety margin
-        // below 63). Step up immediately on the offending report; step down
-        // gradually after a calm period so we don't oscillate.
-        int mag_x = (xx < 0) ? -xx : xx;
-        int mag_y = (yy < 0) ? -yy : yy;
-        int mag   = (mag_x > mag_y) ? mag_x : mag_y;
+        // any inter-poll advance of mouse_x/_y > 63 as reverse motion. Spread
+        // oversized USB reports across multiple poll cycles via a pending
+        // accumulator: slow motion passes through unchanged, fast flicks are
+        // emitted at MAX_PER_POLL until pending drains. No motion is lost.
+        const int MAX_PER_POLL = 50;  // safety margin below the 63 ceiling
 
-        int div;
-        if (g_usb_mouse_autoscale) {
-            uint8_t needed = 1;
-            if      (mag > 200) needed = 8;
-            else if (mag > 100) needed = 4;
-            else if (mag >  50) needed = 2;
+        mouse_pending_x += xx_scaled;
+        mouse_pending_y -= yy_scaled;
 
-            if (needed > mouse_auto_div) {
-                mouse_auto_div = needed;
-                mouse_calm_count = 0;
-            } else if (mag < 25 && mouse_auto_div > 1) {
-                if (++mouse_calm_count >= 500) {
-                    mouse_auto_div >>= 1;
-                    mouse_calm_count = 0;
-                }
-            } else {
-                mouse_calm_count = 0;
-            }
-            div = mouse_auto_div;
-        } else {
-            mouse_auto_div = 1;
-            mouse_calm_count = 0;
-            div = g_usb_mouse_divisor;
-        }
-        if (div < 1) div = 1;
+        int dx = mouse_pending_x;
+        if (dx >  MAX_PER_POLL) dx =  MAX_PER_POLL;
+        if (dx < -MAX_PER_POLL) dx = -MAX_PER_POLL;
+        mouse_x         += dx;
+        mouse_pending_x -= dx;
 
-        mouse_rem_x += xx;
-        mouse_rem_y -= yy;
-        mouse_x += mouse_rem_x / div;
-        mouse_y += mouse_rem_y / div;
-        mouse_rem_x %= div;
-        mouse_rem_y %= div;
+        int dy = mouse_pending_y;
+        if (dy >  MAX_PER_POLL) dy =  MAX_PER_POLL;
+        if (dy < -MAX_PER_POLL) dy = -MAX_PER_POLL;
+        mouse_y         += dy;
+        mouse_pending_y -= dy;
 
 #if U64
         C64_JOY1_SWOUT = mouse_joy;

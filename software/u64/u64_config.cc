@@ -140,8 +140,7 @@ static SemaphoreHandle_t resetSemaphore;
 #define CFG_SPEED_PREF        0x52
 #define CFG_BADLINES_EN       0x53
 #define CFG_SUPERCPU_DET      0x54
-#define CFG_USB_MOUSE_DIVISOR 0x55
-#define CFG_USB_MOUSE_AUTOSCALE 0x56
+#define CFG_USB_MOUSE_SENSITIVITY 0x55
 
 #define CFG_SCAN_MODE_TEST    0xA8
 #define CFG_VIC_TEST          0xA9
@@ -269,6 +268,9 @@ static const uint8_t split_bits[] = { 0x00, 0x02, 0x04, 0x08, 0x10, 0x06, 0x12, 
 static const char *speeds_u64[]   = { " 1", " 2", " 3", " 4", " 5", " 6", " 8", "10", "12", "14", "16", "20", "24", "32", "40", "48" };
 static const char *speeds_u64ii[] = { " 1", " 2", " 3", " 4", " 6", " 8", "10", "12", "14", "16", "20", "24", "32", "40", "48", "64" };
 static const char *speed_regs[] = { "Off", "Manual", "C64U Turbo Registers", "TurboEnable Bit", "a", "b" };
+static const char *mouse_sens_labels[] = { "1/16", "1/8", "1/4", "1/3", "1/2", "2/3", "1x", "1.5x" };
+static const uint8_t mouse_sens_num[]  = {     1,     1,     1,     1,     1,     2,    1,      3 };
+static const uint8_t mouse_sens_den[]  = {    16,     8,     4,     3,     2,     3,    1,      2 };
 static const uint8_t speedregs_regvalues[] = { 0x00, 0x00, 0x01, 0x05, 0x00, 0x00 }; // removed 3 and 7
 
 /*
@@ -329,8 +331,7 @@ struct t_cfg_definition u64_cfg[] = {
 #endif
     { CFG_BADLINES_EN,          CFG_TYPE_ENUM, "Badline Timing",               "%s", en_dis,       0,  1, 1 },
     { CFG_SUPERCPU_DET,         CFG_TYPE_ENUM, "SuperCPU Detect (D0BC)",       "%s", en_dis,       0,  1, 0 },
-    { CFG_USB_MOUSE_DIVISOR,    CFG_TYPE_VALUE, "USB Mouse Divisor",           "%d", NULL,         1, 16, 1 },
-    { CFG_USB_MOUSE_AUTOSCALE,  CFG_TYPE_ENUM, "USB Mouse Auto-Scale",         "%s", en_dis,       0,  1, 1 },
+    { CFG_USB_MOUSE_SENSITIVITY, CFG_TYPE_ENUM, "USB Mouse Sensitivity",       "%s", mouse_sens_labels, 0, 7, 6 },
     { CFG_TYPE_END,             CFG_TYPE_END,  "",                             "",   NULL,         0,  0, 0 } };
 
 struct t_cfg_definition u64_sid_detection_cfg[] = {
@@ -974,13 +975,16 @@ void U64Config :: run_reset_task()
 void U64Config :: effectuate_settings()
 {
     extern uint8_t wasd_to_joy;
-    extern uint8_t g_usb_mouse_divisor;
-    extern uint8_t g_usb_mouse_autoscale;
+    extern uint8_t g_usb_mouse_scale_num;
+    extern uint8_t g_usb_mouse_scale_den;
     if(!cfg)
         return;
 
-    g_usb_mouse_divisor   = (uint8_t) cfg->get_value(CFG_USB_MOUSE_DIVISOR);
-    g_usb_mouse_autoscale = (uint8_t) cfg->get_value(CFG_USB_MOUSE_AUTOSCALE);
+    int sens_idx = cfg->get_value(CFG_USB_MOUSE_SENSITIVITY);
+    if (sens_idx < 0) sens_idx = 6;
+    if (sens_idx > 7) sens_idx = 6;
+    g_usb_mouse_scale_num = mouse_sens_num[sens_idx];
+    g_usb_mouse_scale_den = mouse_sens_den[sens_idx];
 
     C64_PADDLE_EN    = cfg->get_value(CFG_PADDLE_EN);
     C64_PADDLE_SWAP  = cfg->get_value(CFG_JOYSWAP) & 1;
@@ -2506,11 +2510,7 @@ void U64Config :: setup_config_menu(void)
     grp->append(sidaddressing.cfg->find_item(CFG_PADDLE_EN));
     grp->append(ConfigItem :: separator());
     grp->append(ConfigItem :: heading("USB Mouse"));
-    grp->append(cfg->find_item(CFG_USB_MOUSE_AUTOSCALE)->set_item_altname("Auto-Scale"));
-    grp->append(cfg->find_item(CFG_USB_MOUSE_DIVISOR)->set_item_altname("Manual Divisor"));
-    grp->append(ConfigItem :: heading("Auto-Scale picks divisor as needed."));
-    grp->append(ConfigItem :: heading("Manual Divisor: used only when"));
-    grp->append(ConfigItem :: heading("Auto-Scale is off. Higher = slower."));
+    grp->append(cfg->find_item(CFG_USB_MOUSE_SENSITIVITY)->set_item_altname("Sensitivity"));
     grp->append(ConfigItem :: separator());
     grp->append(ConfigItem :: heading("Note: When WASD Joystick emulation"));
     grp->append(ConfigItem :: heading("is enabled, hold [CTRL] to type the"));

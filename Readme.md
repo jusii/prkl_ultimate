@@ -10,12 +10,13 @@ The project is also known as the "Prkl Patch". ⛧⚡
 
 ## What prkl changes about the Commodore 64 Ultimate
 
-### USB mouse — high-DPI support
+### USB mouse — high-DPI support and sensitivity
 The 1351 mouse interface carries 7-bit quadrature on the SID POT X/Y lines, so any single-poll delta greater than 63 wraps and the C64 reads it as reverse motion. High-DPI USB mice trip this on fast movement.
 
-- **Configurable divisor (1..16, integer)** with fractional remainder, so slow motion at higher divisors isn't truncated away. Higher = slower.
-- **Auto-scale**: when |delta| ≥ 40 shows up in three successive USB reports, the divisor doubles (cap 8×); after ~2000 calm packets it steps back down.
-- Two new config items in the U64 config menu: **USB Mouse Divisor** and **USB Mouse Auto-Scale**. Defaults preserve legacy behavior — low-DPI mice feel native.
+- **Saturate-with-pending rate-limit:** USB report deltas feed a per-axis pending accumulator; per 20 ms poll cycle, the cursor advances by at most ±50 (safety margin under the 63 ceiling) and any surplus carries forward to subsequent cycles. **Slow motion is unchanged from raw passthrough — no dampening.** Fast flicks spread across a few cycles. Total motion is preserved exactly.
+- **USB Mouse Sensitivity** config item in the Joystick Settings menu: enum `1/16, 1/8, 1/4, 1/3, 1/2, 2/3, 1x, 1.5x` (default `1x`). Scales input deltas before the rate-limit, with a fractional-remainder accumulator so no motion is lost. Use the slower steps for high-DPI mice (1600+, 3200+, etc. all the way down to extreme gaming mice that need 1/8 or 1/16). 1x is passthrough — identical to no scaling.
+
+> **Upgrading from `1.1.0s2p4` or `1.1.0s2p5`?** The CFG IDs `0x55` and `0x56` previously held `USB Mouse Divisor` (range 1..16) and `USB Mouse Auto-Scale` (on/off); ID `0x55` is now `USB Mouse Sensitivity` (enum 0..7). On first boot of `1.1.0s2p6+`, your saved divisor value will be misinterpreted as a sensitivity index — cursor speed will likely feel off. **One-time fix:** open Joystick Settings → Sensitivity, pick the value you want, Save. The orphan auto-scale value at ID `0x56` is ignored.
 
 ### Web UI additions
 Two new pages in the on-device web UI (browse to `http://<your-device>/`):
