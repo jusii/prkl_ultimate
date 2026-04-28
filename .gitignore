@@ -1,3 +1,8 @@
+# Local-only docs and notes (project knowledge lives elsewhere, not in this repo)
+/CLAUDE.md
+/AGENTS.md
+/doc/prkl/
+
 **/*.a
 **/*.bin
 **/*.bit
@@ -289,5 +294,4 @@ python/grab*
 fpga/cpu_unit/rvlite/vhdl_source/bootrom_pkg_u2.vhd
 fpga/cpu_unit/rvlite/vhdl_source/bootrom_pkg_u2_loader.vhd
 
-CLAUDE.md
 .claude/
