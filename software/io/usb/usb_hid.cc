@@ -11,11 +11,6 @@
 #include "keyboard_usb.h"
 #include "u64.h"
 
-// User sensitivity scale (output = input * num / den). Written by
-// U64Config::effectuate_settings(). Default Normal = 1/1 (pass-through).
-uint8_t g_usb_mouse_scale_num = 1;
-uint8_t g_usb_mouse_scale_den = 1;
-
 // Entry point for call-backs.
 void UsbHidDriver_interrupt_callback(void *object) {
 	((UsbHidDriver *)object)->interrupt_handler();
@@ -38,8 +33,6 @@ UsbHidDriver :: UsbHidDriver(UsbInterface *intf) : UsbDriver(intf)
     keyboard = false;
     mouse = false;
     mouse_x = mouse_y = 0;
-    mouse_pending_x = mouse_pending_y = 0;
-    mouse_scale_acc_x = mouse_scale_acc_y = 0;
 }
 
 UsbHidDriver :: ~UsbHidDriver()
@@ -158,53 +151,23 @@ void UsbHidDriver :: interrupt_handler()
 		system_usb_keyboard.process_data(irq_data);
 	} else if (mouse) { // mouse
         uint8_t mouse_joy = 0x1F;
-        int xx, yy;
 
 #if USE_HID_REPORT
         if (HidReport::getValueFromData(irq_data, rep_button1)) mouse_joy &= ~0x10;
         if (HidReport::getValueFromData(irq_data, rep_button2)) mouse_joy &= ~0x01;
         if (HidReport::getValueFromData(irq_data, rep_button3)) mouse_joy &= ~0x02;
-        xx = HidReport::getValueFromData(irq_data, rep_mouse_x);
-        yy = HidReport::getValueFromData(irq_data, rep_mouse_y);
+        int xx = HidReport::getValueFromData(irq_data, rep_mouse_x);
+        int yy = HidReport::getValueFromData(irq_data, rep_mouse_y);
+        mouse_x += xx; 
+        mouse_y -= yy;
+        // printf("Mouse: %08x, %08x => %4x,%4x %b\n", xx, yy, mouse_x, mouse_y, mouse_joy);
 #else
         if (irq_data[0] & 1) mouse_joy &= ~0x10;
         if (irq_data[0] & 2) mouse_joy &= ~0x01;
         if (irq_data[0] & 4) mouse_joy &= ~0x02;
-        xx = (int8_t)irq_data[1];
-        yy = (int8_t)irq_data[2];
+        mouse_x += (int8_t)irq_data[1];
+        mouse_y -= (int8_t)irq_data[2];
 #endif
-
-        // User sensitivity scale: output = input * num / den, with a remainder
-        // accumulator so fractional motion is never lost across poll cycles.
-        int sx = mouse_scale_acc_x + xx * g_usb_mouse_scale_num;
-        int sy = mouse_scale_acc_y + yy * g_usb_mouse_scale_num;
-        int den = g_usb_mouse_scale_den;
-        int xx_scaled = sx / den;
-        int yy_scaled = sy / den;
-        mouse_scale_acc_x = (int16_t)(sx - xx_scaled * den);
-        mouse_scale_acc_y = (int16_t)(sy - yy_scaled * den);
-
-        // 1351 carries 7-bit signed quadrature, so the C64 driver misreads
-        // any inter-poll advance of mouse_x/_y > 63 as reverse motion. Spread
-        // oversized USB reports across multiple poll cycles via a pending
-        // accumulator: slow motion passes through unchanged, fast flicks are
-        // emitted at MAX_PER_POLL until pending drains. No motion is lost.
-        const int MAX_PER_POLL = 50;  // safety margin below the 63 ceiling
-
-        mouse_pending_x += xx_scaled;
-        mouse_pending_y -= yy_scaled;
-
-        int dx = mouse_pending_x;
-        if (dx >  MAX_PER_POLL) dx =  MAX_PER_POLL;
-        if (dx < -MAX_PER_POLL) dx = -MAX_PER_POLL;
-        mouse_x         += dx;
-        mouse_pending_x -= dx;
-
-        int dy = mouse_pending_y;
-        if (dy >  MAX_PER_POLL) dy =  MAX_PER_POLL;
-        if (dy < -MAX_PER_POLL) dy = -MAX_PER_POLL;
-        mouse_y         += dy;
-        mouse_pending_y -= dy;
 
 #if U64
         C64_JOY1_SWOUT = mouse_joy;
