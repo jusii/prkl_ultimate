@@ -36,6 +36,7 @@ extern "C" {
 #include "init_function.h"
 #include "color_timings.h"
 #include "hdmi_scan.h"
+#include "usb_hid_config.h"
 
 const uint8_t default_colors[16][3] = {
     { 0x00, 0x00, 0x00 },
@@ -57,6 +58,15 @@ const uint8_t default_colors[16][3] = {
 
 // static pointer
 U64Config *u64_configurator = NULL;
+
+extern "C" int u64_get_usb_hid_config_value(int key, int default_value)
+{
+    if ((!u64_configurator) || (!u64_configurator->cfg)) {
+        return default_value;
+    }
+    int value = u64_configurator->cfg->get_value(key);
+    return (value < 0) ? default_value : value;
+}
 static void init(void *_a, void *_b)
 {
     u64_configurator = new U64Config();
@@ -234,6 +244,9 @@ static const char *yes_no[] = { "No", "Yes" };
 static const char *dvi_hdmi[] = { "Auto", "HDMI", "DVI" };
 static const char *video_sel[] = { "CVBS + SVideo", "RGB" };
 static const char *color_sel[] = { "PAL", "NTSC", "PAL-60", "NTSC-50", "PAL-60/L", "NTSC-50/L" };
+static const char *mouse_acceleration_modes[] = { "Off", "Adaptive" };
+static const char *mouse_modes[] = { "Cursor", "Mouse", "Mouse + Cursor", "Mouse + Wheel" };
+static const char *wheel_directions[] = { "Normal", "Reversed" };
 
 static const char *sid_types[] = { "None", "6581", "8580", "FPGASID", "SwinSID Ultimate", "ARMSID", "ARM2SID", "SidFx", "FPGASID Dukestah" };
 static const char *sid_shunt[] = { "Off", "On" };
@@ -298,6 +311,16 @@ struct t_cfg_definition u64_cfg[] = {
 #else
     { CFG_JOYSWAP,              CFG_TYPE_ENUM, "Joystick Swapper",             "%s", joyswaps,     0,  1, 0 },
 #endif
+    { CFG_MOUSE_MODE,           CFG_TYPE_ENUM, "Mouse Mode",                   "%s", mouse_modes,       0,  3, 1 },
+    { CFG_MOUSE_SENSITIVITY,    CFG_TYPE_VALUE, "Mouse Sensitivity",           "%d", NULL,              1, 16, 8 },
+    { CFG_MOUSE_ACCELERATION,   CFG_TYPE_ENUM, "Mouse Acceleration",           "%s", mouse_acceleration_modes, 0,  1, 0 },
+    { CFG_SCROLL_FACTOR,        CFG_TYPE_VALUE, "Mouse Wheel Sensitivity",     "%d", NULL,              1, 16, 8 },
+    { CFG_WHEEL_DIRECTION,      CFG_TYPE_ENUM,  "Mouse Wheel Direction",       "%s", wheel_directions, 0,  1, 0 },
+    { CFG_MENU_MOUSE_NAV,       CFG_TYPE_ENUM,  "Menu Mouse Navigation",       "%s", en_dis,          0,  1, 1 },
+    { CFG_USB_MOUSE_NAME,       CFG_TYPE_INFO,  "USB Mouse",                   "%s", NULL,            0, 32, (int)"" },
+    { CFG_USB_MOUSE_MODE,       CFG_TYPE_INFO,  "USB Mouse HID Mode",          "%s", NULL,            0, 16, (int)"" },
+    { CFG_USB_KEYBOARD_NAME,    CFG_TYPE_INFO,  "USB Keyboard",                "%s", NULL,            0, 32, (int)"" },
+    { CFG_USB_KEYBOARD_MODE,    CFG_TYPE_INFO,  "USB Keyboard HID Mode",       "%s", NULL,            0, 16, (int)"" },
     { CFG_USERPORT_EN,          CFG_TYPE_ENUM, "UserPort Power Enable",        "%s", en_dis,       0,  1, 1 },
 //    { CFG_CART_PREFERENCE,      CFG_TYPE_ENUM, "Cartridge Preference",         "%s", cartmodes,    0,  2, 0 }, // moved to C64 for user consistency
     { CFG_PALETTE,              CFG_TYPE_STRFUNC, "Palette Definition",        "%s", (const char **)U64Config :: list_palettes, 0, 30, (int)"" },
@@ -2495,6 +2518,19 @@ void U64Config :: setup_config_menu(void)
     grp = ConfigGroupCollection :: getGroup("Joystick Settings", SORT_ORDER_CFG_JOYSTICK);
     grp->append(cfg->find_item(CFG_JOYSWAP)->set_item_altname("Joystick Input"));
     grp->append(sidaddressing.cfg->find_item(CFG_PADDLE_EN));
+    grp->append(ConfigItem :: separator());
+    grp->append(cfg->find_item(CFG_MOUSE_MODE));
+    grp->append(cfg->find_item(CFG_MOUSE_SENSITIVITY));
+    grp->append(cfg->find_item(CFG_MOUSE_ACCELERATION));
+    grp->append(cfg->find_item(CFG_MENU_MOUSE_NAV));
+    grp->append(ConfigItem :: separator());
+    grp->append(cfg->find_item(CFG_SCROLL_FACTOR));
+    grp->append(cfg->find_item(CFG_WHEEL_DIRECTION));
+    grp->append(ConfigItem :: separator());
+    grp->append(cfg->find_item(CFG_USB_MOUSE_NAME));
+    grp->append(cfg->find_item(CFG_USB_MOUSE_MODE));
+    grp->append(cfg->find_item(CFG_USB_KEYBOARD_NAME));
+    grp->append(cfg->find_item(CFG_USB_KEYBOARD_MODE));
     grp->append(ConfigItem :: separator());
     grp->append(ConfigItem :: heading("Note: When WASD Joystick emulation"));
     grp->append(ConfigItem :: heading("is enabled, hold [CTRL] to type the"));
