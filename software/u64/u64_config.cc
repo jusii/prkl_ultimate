@@ -36,6 +36,7 @@ extern "C" {
 #include "init_function.h"
 #include "color_timings.h"
 #include "hdmi_scan.h"
+#include "usb_hid.h"
 #include "usb_hid_config.h"
 
 const uint8_t default_colors[16][3] = {
@@ -58,6 +59,8 @@ const uint8_t default_colors[16][3] = {
 
 // static pointer
 U64Config *u64_configurator = NULL;
+static volatile uint32_t u64_usb_hid_status_generation = 0;
+static volatile uint32_t u64_usb_hid_status_handled_generation = 0;
 
 extern "C" int u64_get_usb_hid_config_value(int key, int default_value)
 {
@@ -67,6 +70,8 @@ extern "C" int u64_get_usb_hid_config_value(int key, int default_value)
     int value = u64_configurator->cfg->get_value(key);
     return (value < 0) ? default_value : value;
 }
+
+static void u64_update_usb_hid_info_items(ConfigStore *cfg);
 static void init(void *_a, void *_b)
 {
     u64_configurator = new U64Config();
@@ -884,6 +889,7 @@ U64Config :: U64Config() : SubSystem(SUBSYSID_U64)
 
         cfg->set_alt_name("C64U Specific Settings");
         setup_config_menu(); // Create different config groups
+        u64_update_usb_hid_info_items(cfg);
         cfg->hide();
 
         // Boot hotkey
@@ -2491,6 +2497,65 @@ void U64Config :: late_init_palette(void *obj, void *param)
 }
 
 #include "bling_board.h"
+static void u64_update_usb_hid_info_items(ConfigStore *cfg)
+{
+    if (!cfg) {
+        return;
+    }
+
+    t_usb_hid_status_snapshot snapshot;
+    usb_hid_get_status_snapshot(snapshot);
+
+    struct {
+        uint8_t name_id;
+        uint8_t mode_id;
+        const char *name_value;
+        const char *mode_value;
+    } hid_items[] = {
+        { CFG_USB_MOUSE_NAME, CFG_USB_MOUSE_MODE, snapshot.mouse_name, snapshot.mouse_mode },
+        { CFG_USB_KEYBOARD_NAME, CFG_USB_KEYBOARD_MODE, snapshot.keyboard_name, snapshot.keyboard_mode },
+    };
+
+    for (unsigned int i = 0; i < (sizeof(hid_items) / sizeof(hid_items[0])); i++) {
+        ConfigItem *name_item = cfg->find_item(hid_items[i].name_id);
+        ConfigItem *mode_item = cfg->find_item(hid_items[i].mode_id);
+        if (name_item) {
+            name_item->setEnabled(false);
+            name_item->setString(hid_items[i].name_value);
+        }
+        if (mode_item) {
+            mode_item->setEnabled(false);
+            mode_item->setString(hid_items[i].mode_value);
+        }
+    }
+}
+
+extern "C" void u64_refresh_usb_hid_status(void)
+{
+    portENTER_CRITICAL();
+    u64_usb_hid_status_generation++;
+    portEXIT_CRITICAL();
+}
+
+extern "C" void u64_dispatch_usb_hid_status_refresh(void)
+{
+    bool refresh_needed = false;
+
+    portENTER_CRITICAL();
+    if (u64_usb_hid_status_generation != u64_usb_hid_status_handled_generation) {
+        u64_usb_hid_status_handled_generation = u64_usb_hid_status_generation;
+        refresh_needed = true;
+    }
+    portEXIT_CRITICAL();
+
+    if (refresh_needed) {
+        if (u64_configurator && u64_configurator->cfg) {
+            u64_update_usb_hid_info_items(u64_configurator->cfg);
+        }
+        FileManager :: getFileManager() -> sendEventToObservers(eRefreshDirectory, "/", "");
+    }
+}
+
 void U64Config :: setup_config_menu(void)
 {
     ConfigGroup *grp = ConfigGroupCollection :: getGroup("Video Configuration", SORT_ORDER_CFG_U64);
