@@ -17,6 +17,8 @@
 #endif // UPDATER
 #endif // NO_FILE_ACCESS
 
+extern "C" void u64_dispatch_usb_hid_status_refresh(void) __attribute__((weak));
+
 /* Help */
 static const char *helptext =
         "WASD:       Up/Left/Down/Right\n"
@@ -409,6 +411,9 @@ int UserInterface :: pollFocussed(void)
 {
 	int ret = 0;
     do {
+        if (u64_dispatch_usb_hid_status_refresh) {
+            u64_dispatch_usb_hid_status_refresh();
+        }
         ret = ui_objects[focus]->poll(ret); // param pass chain
 
         // Stay in the current window configuration
