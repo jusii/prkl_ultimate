@@ -6,17 +6,22 @@ prkl preserves everything Spiffy added (Assembly64 multi-server config, the kick
 
 The project is also known as the "Prkl Patch". ⛧⚡
 
+> **⚠️ You are on the `experiment/gideon-backport` branch — a long-running experimental line.**
+> Published binaries on this branch are tagged `1.1.0s2pN-expM` (e.g. `1.1.0s2p7-exp1`) and have **not** been promoted to the main `prkl-1.1.0` line. SoftPatch is RAM-loaded and reverts on power cycle — it cannot brick the device. **FlashPatch is held back** until each `-expM` SoftPatch has accumulated hardware-test mileage. See [GitHub Releases](https://github.com/jusii/prkl_ultimate/releases) for the latest `-expN` binary, or switch to the [`prkl-1.1.0` branch](https://github.com/jusii/prkl_ultimate/tree/prkl-1.1.0) for the stable line.
+
 ---
 
 ## What prkl changes about the Commodore 64 Ultimate
 
-### USB mouse — high-DPI support and sensitivity
-The 1351 mouse interface carries 7-bit quadrature on the SID POT X/Y lines, so any single-poll delta greater than 63 wraps and the C64 reads it as reverse motion. High-DPI USB mice trip this on fast movement.
+### USB mouse and keyboard — vendored from gideon
+The stable `prkl-1.1.0` line ships prkl's own USB mouse rewrite (rate-limit + sensitivity — see its [Readme](https://github.com/jusii/prkl_ultimate/blob/prkl-1.1.0/Readme.md)). **This experiment branch drops that customization** and instead vendors gideon's USB HID subsystem wholesale from `gideon/master @ 58d0e55a`, bringing in:
 
-- **Saturate-with-pending rate-limit:** USB report deltas feed a per-axis pending accumulator; per 20 ms poll cycle, the cursor advances by at most ±50 (safety margin under the 63 ceiling) and any surplus carries forward to subsequent cycles. **Slow motion is unchanged from raw passthrough — no dampening.** Fast flicks spread across a few cycles. Total motion is preserved exactly.
-- **USB Mouse Sensitivity** config item in the Joystick Settings menu: enum `1/16, 1/8, 1/4, 1/3, 1/2, 2/3, 1x, 1.5x` (default `1x`). Scales input deltas before the rate-limit, with a fractional-remainder accumulator so no motion is lost. Use the slower steps for high-DPI mice (1600+, 3200+, etc. all the way down to extreme gaming mice that need 1/8 or 1/16). 1x is passthrough — identical to no scaling.
+- **Micromys protocol** — mouse wheel support on the C64 side, via the 1351 protocol extension.
+- **Adaptive acceleration** in menu-mouse mode.
+- **Mouse mode selector** in the Joystick Settings menu (1351 emulation, Micromys, menu navigation, etc.).
+- **USB HID keyboard refactor** alongside the mouse changes.
 
-> **Upgrading from `1.1.0s2p4` or `1.1.0s2p5`?** The CFG IDs `0x55` and `0x56` previously held `USB Mouse Divisor` (range 1..16) and `USB Mouse Auto-Scale` (on/off); ID `0x55` is now `USB Mouse Sensitivity` (enum 0..7). On first boot of `1.1.0s2p6+`, your saved divisor value will be misinterpreted as a sensitivity index — cursor speed will likely feel off. **One-time fix:** open Joystick Settings → Sensitivity, pick the value you want, Save. The orphan auto-scale value at ID `0x56` is ignored.
+Settings live under Joystick Settings → USB HID. The s2p6 "USB Mouse Sensitivity" item is gone; the new options are Mouse Mode + Mouse Acceleration. The vendored files are do-not-modify-locally and will be re-vendored periodically from later gideon snapshots.
 
 ### Web UI additions
 Two new pages in the on-device web UI (browse to `http://<your-device>/`):
@@ -35,10 +40,12 @@ Three small patches in `software/io/network/data_streamer.cc` and `software/io/c
 - `dma_load_raw_buffer` skips `release_host()` when called for a *read* (rw=1). The original code unconditionally kicked the U64 menu off the C64 every time anything called `readmem`, dropping the user back to BASIC. Reads are now transparent to the menu; writes still take the full release path.
 
 #### Prebuilt binaries
-Two prkl-stamped binaries are committed at the repo root for each release so users don't need the Docker build env to test:
+This experiment branch publishes **only SoftPatches** (no FlashPatch) until each `-expN` SoftPatch accumulates hardware-test mileage on the rig. The repo root therefore has:
 
-- **`Prkl_SoftPatch_<version>.ue2`** — the kickstart RAM-loader. Drop into `/Temp/` on the device, run from the menu (or via [quickstart.sh](quickstart.sh)). No flash writes; power-cycle returns to whatever's flashed.
-- **`Prkl_FlashPatch_<version>.ue2`** — programs `ultimate.app` to flash via the kickburn flow. Permanent. **See warning below.**
+- **`Prkl_SoftPatch_1.1.0s2pN-expM.ue2`** — the kickstart RAM-loader for the current experimental build. Drop into `/Temp/` on the device, run from the menu (or via [quickstart.sh](quickstart.sh)). No flash writes; power-cycle returns to whatever's flashed (typically `1.1.0s2p6` from the stable line's FlashPatch).
+- **`Prkl_SoftPatch_1.1.0s2p6.ue2` / `Prkl_FlashPatch_1.1.0s2p6.ue2`** — the *stable* line's binaries, kept in this branch for completeness. **They do not include the experimental backports listed above** — they are the same binaries you'd get from the `prkl-1.1.0` branch.
+
+A FlashPatch for the experimental line will appear once the corresponding SoftPatch has had enough mileage. Until then, treat any flashing on this branch as your own decision against the corresponding `prkl-1.1.0` FlashPatch.
 
 #### Flashing the FlashPatch — warning
 Spiffy's general kickburn warning applies (see [Building / Other Make Targets](#other-make-targets) section below) but a few prkl-specific notes:
@@ -57,7 +64,21 @@ To deploy `html/index.html` without re-flashing:
 
 (default host is `c64u`). The script FTPs the file to `/Flash/html/index.html`. Refresh the browser to see changes. The upload survives reboots, SoftPatches, and FlashPatches; a full `update.ue2` will overwrite it with whatever HTML is bundled in the update binary.
 
-*(More changes will be listed here as the fork grows.)*
+### Experimental additions on this branch (vs `1.1.0s2p6`)
+
+In addition to the vendored gideon HID stack above, this branch backports a number of gideon-master commits that aren't yet in the stable `prkl-1.1.0` line:
+
+- **Hex/ASCII file viewer** in the file-browser context menu — F2/Home jump to start of file, F8/End to end of file.
+- **SID socket detection** for PDsid and SIDkick-pico replacement chips. Auto-detected at boot; config plumbing for SIDkick is still being finished upstream.
+- **Hardened FTP and telnet** — listener resilience under churn, socket timeout + auth checks, proper destroy_connection on FTPDaemonThread shutdown, double-close guards on data connections, transfer-result tracking, read-error abort. Multiple coordinated fixes upstream of where `prkl-1.1.0` sits.
+- **Overlay menu position fix** on Mark 2 hardware — re-instates `U64==2` guards in `configure_hdmi_output`.
+- **`snprintf` symbol** provided by `small_printf` — drops the newlib `kill`/`getpid` stub dependency at link time.
+- **TOD clock no longer freezes** when the Ultimate app's freeze feature would otherwise interfere with CIA#1.
+- **Cartridge crash on update fixed.**
+- **WiFi connection check restored.**
+- *(Latent)* Network entries in the root file browser — code is present but dormant on Mark 2 hardware until interface registration is wired up. Will surface on hardware where `NetworkInterface::getNumberOfInterfaces()` returns non-zero.
+
+See [the per-release notes on GitHub](https://github.com/jusii/prkl_ultimate/releases) for the exact commit-level breakdown of each `-expN` build.
 
 ---
 
