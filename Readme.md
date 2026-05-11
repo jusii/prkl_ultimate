@@ -7,7 +7,7 @@ prkl preserves everything Spiffy added (Assembly64 multi-server config, the kick
 The project is also known as the "Prkl Patch". ⛧⚡
 
 > **⚠️ You are on the `experiment/gideon-backport` branch — a long-running experimental line.**
-> Published binaries on this branch are tagged `1.1.0s2pN-expM` (e.g. `1.1.0s2p7-exp1`) and have **not** been promoted to the main `prkl-1.1.0` line. SoftPatch is RAM-loaded and reverts on power cycle — it cannot brick the device. **FlashPatch is held back** until each `-expM` SoftPatch has accumulated hardware-test mileage. See [GitHub Releases](https://github.com/jusii/prkl_ultimate/releases) for the latest `-expN` binary, or switch to the [`prkl-1.1.0` branch](https://github.com/jusii/prkl_ultimate/tree/prkl-1.1.0) for the stable line.
+> Published binaries on this branch are tagged `1.1.0s2pN-expM` (e.g. `1.1.0s2p7-exp1`) and have **not** been promoted to the main `prkl-1.1.0` line. SoftPatch is RAM-loaded and reverts on power cycle — it cannot brick the device. **FlashPatch for a given `-expM` is released only after the corresponding SoftPatch has accumulated hardware-test mileage** — so the FlashPatch may lag the SoftPatch by some days within a given `-expM`. See [GitHub Releases](https://github.com/jusii/prkl_ultimate/releases) for the latest `-expN` binaries, or switch to the [`prkl-1.1.0` branch](https://github.com/jusii/prkl_ultimate/tree/prkl-1.1.0) for the stable line.
 
 ---
 
@@ -60,12 +60,11 @@ Three small patches in `software/io/network/data_streamer.cc` and `software/io/c
 - `dma_load_raw_buffer` skips `release_host()` when called for a *read* (rw=1). The original code unconditionally kicked the U64 menu off the C64 every time anything called `readmem`, dropping the user back to BASIC. Reads are now transparent to the menu; writes still take the full release path.
 
 #### Prebuilt binaries
-This experiment branch publishes **only SoftPatches** (no FlashPatch) until each `-expN` SoftPatch accumulates hardware-test mileage on the rig. The repo root therefore has:
+A SoftPatch ships first for each `-expN`. The matching FlashPatch follows once the SoftPatch has had enough hardware-test mileage on the rig (typically a few days). The repo root carries:
 
-- **`Prkl_SoftPatch_1.1.0s2pN-expM.ue2`** — the kickstart RAM-loader for the current experimental build. Drop into `/Temp/` on the device, run from the menu (or via [quickstart.sh](quickstart.sh)). No flash writes; power-cycle returns to whatever's flashed (typically `1.1.0s2p6` from the stable line's FlashPatch).
-- **`Prkl_SoftPatch_1.1.0s2p6.ue2` / `Prkl_FlashPatch_1.1.0s2p6.ue2`** — the *stable* line's binaries, kept in this branch for completeness. **They do not include the experimental backports listed above** — they are the same binaries you'd get from the `prkl-1.1.0` branch.
-
-A FlashPatch for the experimental line will appear once the corresponding SoftPatch has had enough mileage. Until then, treat any flashing on this branch as your own decision against the corresponding `prkl-1.1.0` FlashPatch.
+- **`Prkl_SoftPatch_1.1.0s2pN-expM.ue2`** — the kickstart RAM-loader for the current experimental build. Drop into `/Temp/` on the device, run from the menu (or via [quickstart.sh](quickstart.sh)). No flash writes; power-cycle returns to whatever's flashed.
+- **`Prkl_FlashPatch_1.1.0s2pN-expM.ue2`** — the flashable companion for the *same* `-expM`, programs `ultimate.app` to flash via the kickburn flow. Permanent until next flash. Only published once the matching SoftPatch has accumulated mileage. **See [Flashing the FlashPatch — warning](#flashing-the-flashpatch--warning) below before running.**
+- **`Prkl_SoftPatch_1.1.0s2p6.ue2` / `Prkl_FlashPatch_1.1.0s2p6.ue2`** — the *stable* line's binaries, kept in this branch as the documented rollback path. They do not include the experimental backports listed above — they are the same binaries you'd get from the `prkl-1.1.0` branch. If an experimental FlashPatch misbehaves on your hardware, flashing the s2p6 FlashPatch brings the device back to the known-good stable state.
 
 #### Flashing the FlashPatch — warning
 Spiffy's general kickburn warning applies (see [Building / Other Make Targets](#other-make-targets) section below) but a few prkl-specific notes:
