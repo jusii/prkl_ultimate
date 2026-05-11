@@ -35,12 +35,6 @@ Plus four read-only info displays so you can see what's actually plugged in:
 - **USB Keyboard** — same for the keyboard.
 - **USB Keyboard HID Mode** — Boot/Report indicator for the keyboard.
 
-#### What changes for prkl-1.1.0 users moving to this experiment branch
-- **Sensitivity semantics are different.** prkl-1.1.0 used a fractional enum (1/16..1.5x); this branch uses an integer 1..16. A "1x" feel on prkl-1.1.0 doesn't map to a specific integer on this branch — re-pick a sensitivity by feel on first boot.
-- **The hard 7-bit ceiling protection is gone.** prkl-1.1.0's saturate-with-pending rate-limit was specifically to avoid the 1351's ±63 wrap on high-DPI flicks. Gideon's stack uses its own pacing model (per-poll integer scale + optional adaptive accel) rather than a per-axis pending accumulator. Behavior on extreme-DPI mice may differ. **If reverse-motion glitches reappear on fast movement, this is the area to investigate.**
-- **Mouse wheel finally works** if your software/menu speaks Micromys. Was absent in prkl-1.1.0.
-- **Connected-device names are visible** in the menu — useful for diagnosing why a particular mouse feels different.
-
 The vendored files are do-not-modify-locally and will be re-vendored periodically from later gideon snapshots. Touchpoints between vendored code and prkl-local code go through weak `extern "C"` callbacks (`u64_get_usb_hid_config_value`, `u64_dispatch_usb_hid_status_refresh`) implemented in `u64_config.cc` and `userinterface.cc`.
 
 ### Web UI additions
@@ -82,6 +76,43 @@ To deploy `html/index.html` without re-flashing:
     ./upload-html.sh <device-ip-or-hostname>
 
 (default host is `c64u`). The script FTPs the file to `/Flash/html/index.html`. Refresh the browser to see changes. The upload survives reboots, SoftPatches, and FlashPatches; a full `update.ue2` will overwrite it with whatever HTML is bundled in the update binary.
+
+### What changes for `prkl-1.1.0` users moving to this experiment branch
+
+A condensed view of the user-visible differences, grouped by category. The detailed per-area writeup is in the **Experimental additions** section below.
+
+**Mouse — the only place where a *regression* is plausible**
+- **Sensitivity semantics are different.** prkl-1.1.0 used a fractional enum (1/16..1.5x with a fractional-remainder accumulator); this branch uses an integer 1..16. A "1x" feel on prkl-1.1.0 doesn't map to a specific integer here — re-pick by feel on first boot.
+- **The hard 7-bit ceiling protection is gone.** prkl-1.1.0's saturate-with-pending rate-limit was engineered specifically to prevent the 1351's ±63 quadrature wrap on high-DPI flicks. Gideon's stack uses a different pacing model (per-poll integer scale + optional adaptive accel) without an explicit per-axis pending accumulator. **If reverse-motion glitches reappear on fast movement on extreme-DPI mice, this is the area to investigate.**
+- **Mouse wheel finally works** if your software/menu speaks the Micromys protocol — that capability was simply absent in prkl-1.1.0.
+- **Connected device names visible.** The Joystick Settings menu shows the USB descriptor name of the connected mouse and keyboard plus their HID protocol mode (Boot vs Report). Useful for diagnosing why one mouse feels different from another.
+
+**New features gained vs prkl-1.1.0**
+- **SID socket detection now recognizes SIDkick-pico and PDsid** in addition to ARMSID / FPGASID / SwinSID. Auto-detected at boot; chip type shown in SID Sockets Configuration. (Caveat: gideon's SIDkick config plumbing is still in progress upstream — detection works, not all SIDkick-specific config items are wired yet.)
+- **Hex / ASCII file viewer in the file browser.** New "Hex View" entry in the file context menu, two-pane `offset | hex | ASCII` display, F2/Home jumps to start, F8/End to end.
+
+**Reliability — FTP and telnet hardened**
+- Listener resilience under rapid reconnect churn (no more wedged ports under hammering).
+- Socket timeout and auth-handshake checks (long-idle sockets time out cleanly).
+- Network-outage `host->exists()` guards across the UI poll loops (UI doesn't hang during outages).
+- `destroy_connection` + FTPDaemonThread destructor + double-close guards on data connections.
+- Transfer-result tracking and read-error abort (partial transfers no longer claim success).
+
+**Bug fixes inherited from `gideon/master`**
+- **TOD clock no longer freezes** when the Ultimate app's freeze feature would otherwise interfere with CIA#1.
+- **Cartridge crash on firmware update fixed.**
+- **WiFi connection check restored** (had been accidentally removed in an earlier refactor).
+- **Overlay menu position fixed** on Mark 2 hardware (re-instates `U64==2` guards in `configure_hdmi_output`).
+- **SID player extra-loader fix** (installing extra player in scenarios where there's enough space after the load end address now succeeds).
+- `snprintf` symbol now provided by `small_printf` — no user-facing effect, but removes the newlib `kill`/`getpid` stub dependency at link time.
+
+**Dormant on Mark 2 hardware**
+- Network entries in the root file browser — code is in this build but inactive on Mark 2 until interface registration is wired up. Will surface on hardware where `NetworkInterface::getNumberOfInterfaces()` returns non-zero.
+
+**Unchanged from prkl-1.1.0**
+- Web UI additions (C64 Screen, Data Streams pages).
+- Firmware fixes that the web UI depends on (`ipaddr_aton` fallback, persistent-socket ARP retry, `dma_load_raw_buffer` no-release-on-reads).
+- Spiffy material: kickstart RAM-loader, custom branding, Assembly64 multi-server config, hotkeys, flash protection.
 
 ### Experimental additions on this branch (vs `1.1.0s2p6`)
 
