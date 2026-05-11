@@ -14,14 +14,34 @@ The project is also known as the "Prkl Patch". ⛧⚡
 ## What prkl changes about the Commodore 64 Ultimate
 
 ### USB mouse and keyboard — vendored from gideon
-The stable `prkl-1.1.0` line ships prkl's own USB mouse rewrite (rate-limit + sensitivity — see its [Readme](https://github.com/jusii/prkl_ultimate/blob/prkl-1.1.0/Readme.md)). **This experiment branch drops that customization** and instead vendors gideon's USB HID subsystem wholesale from `gideon/master @ 58d0e55a`, bringing in:
+The stable `prkl-1.1.0` line ships prkl's own USB mouse rewrite (saturate-with-pending rate-limit plus a single Sensitivity enum knob — see its [Readme](https://github.com/jusii/prkl_ultimate/blob/prkl-1.1.0/Readme.md)). **This experiment branch drops that customization entirely** (commit `1e55a6bd Drop prkl USB mouse customizations`) and instead vendors gideon's USB HID subsystem wholesale from `gideon/master @ 58d0e55a` (10 files, +2541/−152 lines), bringing in a substantially richer mouse + keyboard stack.
 
-- **Micromys protocol** — mouse wheel support on the C64 side, via the 1351 protocol extension.
-- **Adaptive acceleration** in menu-mouse mode.
-- **Mouse mode selector** in the Joystick Settings menu (1351 emulation, Micromys, menu navigation, etc.).
-- **USB HID keyboard refactor** alongside the mouse changes.
+#### New Joystick Settings items
+The following appear in the Joystick Settings menu (and replace prkl-1.1.0's single Sensitivity item):
 
-Settings live under Joystick Settings → USB HID. The s2p6 "USB Mouse Sensitivity" item is gone; the new options are Mouse Mode + Mouse Acceleration. The vendored files are do-not-modify-locally and will be re-vendored periodically from later gideon snapshots.
+| Item | Type | Range / Values | Default | Notes |
+|---|---|---|---|---|
+| **Mouse Mode** | enum | Cursor / Mouse / Mouse + Cursor / Mouse + Wheel | Mouse | Selects how USB mouse motion is presented to the C64. "Cursor" emits cursor-key events (useful for software that doesn't speak 1351). "Mouse" is classic 1351 quadrature. "Mouse + Wheel" adds Micromys-protocol wheel deltas on top. |
+| **Mouse Sensitivity** | integer | 1..16 | 8 | Cursor speed multiplier. Note: **completely different semantics from prkl-1.1.0's enum knob.** Gideon's stack uses an integer scale; the prkl-1.1.0 enum (1/16..1.5x with fractional accumulator) is gone. |
+| **Mouse Acceleration** | enum | Off / Adaptive | Off | "Adaptive" speeds up the cursor under sustained fast motion, slows back down when motion gentles. |
+| **Menu Mouse Navigation** | enum | Disabled / Enabled | Enabled | Whether the USB mouse drives the device's *menu* (vs only being passed to the C64). |
+| **Mouse Wheel Sensitivity** | integer | 1..16 | 8 | Scroll factor for Micromys wheel events. |
+| **Mouse Wheel Direction** | enum | Normal / Reversed | Normal | Inverts wheel direction. |
+
+Plus four read-only info displays so you can see what's actually plugged in:
+
+- **USB Mouse** — connected mouse's USB descriptor name (e.g. "Logitech USB Receiver").
+- **USB Mouse HID Mode** — Boot Protocol or Report Protocol, whichever the driver negotiated.
+- **USB Keyboard** — same for the keyboard.
+- **USB Keyboard HID Mode** — Boot/Report indicator for the keyboard.
+
+#### What changes for prkl-1.1.0 users moving to this experiment branch
+- **Sensitivity semantics are different.** prkl-1.1.0 used a fractional enum (1/16..1.5x); this branch uses an integer 1..16. A "1x" feel on prkl-1.1.0 doesn't map to a specific integer on this branch — re-pick a sensitivity by feel on first boot.
+- **The hard 7-bit ceiling protection is gone.** prkl-1.1.0's saturate-with-pending rate-limit was specifically to avoid the 1351's ±63 wrap on high-DPI flicks. Gideon's stack uses its own pacing model (per-poll integer scale + optional adaptive accel) rather than a per-axis pending accumulator. Behavior on extreme-DPI mice may differ. **If reverse-motion glitches reappear on fast movement, this is the area to investigate.**
+- **Mouse wheel finally works** if your software/menu speaks Micromys. Was absent in prkl-1.1.0.
+- **Connected-device names are visible** in the menu — useful for diagnosing why a particular mouse feels different.
+
+The vendored files are do-not-modify-locally and will be re-vendored periodically from later gideon snapshots. Touchpoints between vendored code and prkl-local code go through weak `extern "C"` callbacks (`u64_get_usb_hid_config_value`, `u64_dispatch_usb_hid_status_refresh`) implemented in `u64_config.cc` and `userinterface.cc`.
 
 ### Web UI additions
 Two new pages in the on-device web UI (browse to `http://<your-device>/`):
@@ -66,17 +86,46 @@ To deploy `html/index.html` without re-flashing:
 
 ### Experimental additions on this branch (vs `1.1.0s2p6`)
 
-In addition to the vendored gideon HID stack above, this branch backports a number of gideon-master commits that aren't yet in the stable `prkl-1.1.0` line:
+In addition to the vendored gideon HID stack above, this branch backports a number of `gideon/master` commits that aren't yet in the stable `prkl-1.1.0` line. All preserve gideon authorship and a `(cherry picked from commit XXX)` footer via `git cherry-pick -x`.
 
-- **Hex/ASCII file viewer** in the file-browser context menu — F2/Home jump to start of file, F8/End to end of file.
-- **SID socket detection** for PDsid and SIDkick-pico replacement chips. Auto-detected at boot; config plumbing for SIDkick is still being finished upstream.
-- **Hardened FTP and telnet** — listener resilience under churn, socket timeout + auth checks, proper destroy_connection on FTPDaemonThread shutdown, double-close guards on data connections, transfer-result tracking, read-error abort. Multiple coordinated fixes upstream of where `prkl-1.1.0` sits.
-- **Overlay menu position fix** on Mark 2 hardware — re-instates `U64==2` guards in `configure_hdmi_output`.
-- **`snprintf` symbol** provided by `small_printf` — drops the newlib `kill`/`getpid` stub dependency at link time.
-- **TOD clock no longer freezes** when the Ultimate app's freeze feature would otherwise interfere with CIA#1.
-- **Cartridge crash on update fixed.**
-- **WiFi connection check restored.**
-- *(Latent)* Network entries in the root file browser — code is present but dormant on Mark 2 hardware until interface registration is wired up. Will surface on hardware where `NetworkInterface::getNumberOfInterfaces()` returns non-zero.
+#### Hex / ASCII file viewer
+A 6-commit chain adding a hex viewer to the file-browser context menu. On any file, the right-arrow action menu now has a **Hex View** entry alongside the existing View/Edit actions. Opens a two-pane view with 16-byte rows showing `offset | hex bytes | ASCII`. **F2 / Home** jumps to start of file, **F8 / End** to end. Uses the same Editor inheritance hierarchy as the text viewer (`Editor` → `TextEditor` / `HexEditor`) so memory overhead is modest. Includes a PC-host build target for testing.
+
+#### SID socket detection — PDsid and SIDkick-pico
+A 3-commit chain extending the existing SID socket type detection (which already recognised ARMSID, FPGASID, SwinSID) to also identify **PDsid** and **SIDkick-pico** chips. Both are popular SID-replacement chips for repairing/upgrading dead-SID C64s. At boot the firmware probes each SID socket for the chip's response signature; the detected type is displayed in SID Sockets Configuration and used to enable/disable the right per-chip config sub-menu. **Caveat:** gideon's own commit titles hint that SIDkick config plumbing is still in progress upstream — detection should work but not all SIDkick-specific config items are fully wired yet. (Author note: the user just acquired a SIDkick, so this'll get real-world testing soon.)
+
+#### Hardened FTP and telnet
+Eight coordinated commits across two gideon upstream PRs (`fix/network-outage` and `fix/ftp-passive-lifetime`):
+
+- **Listener resilience** — telnet and FTP control listeners no longer get wedged under rapid reconnect churn.
+- **Socket timeout + auth checks** — long-idle sockets time out cleanly; auth handshakes fail safely.
+- **Network/stream refactor** — `host->exists()` guards added across UI poll loops (`run_remote`, `popup`, `string_box`, `run_editor`, `choice`) so a network-outage doesn't hang the UI thread.
+- **FTPDaemonThread destructor + `destroy_connection`** — proper cleanup on thread shutdown.
+- **Double-close guards on data connections** — fix for the classic FTP-bug-bear of closing a socket twice and corrupting an unrelated session.
+- **Transfer-result tracking + read-error abort** — partial transfers no longer claim success; read errors abort cleanly instead of looping.
+
+Net effect: the device's FTP and telnet servers can be hammered without going unresponsive. Pre-existing operational note about "FTP storm during deploy" stalling the device — this branch fixes the symptoms even if the underlying connection-pool sizing is unchanged.
+
+#### Overlay menu position fix on Mark 2 hardware
+Re-instates the `#if U64 == 2` preprocessor guards around the HDMI overlay register writes in `U64Config::configure_hdmi_output()`. Gideon had commented them out during development. With the guards back in place, the overlay (the bar that pops over the C64 screen when the menu is opened mid-game) positions correctly on Mark 2 hardware.
+
+#### `snprintf` via `small_printf`
+Refactors the internal printf helper (`_my_vprintf` → `_my_vnprintf` with a `maxlen` bound), adds proper bounds-checking, and exposes a `snprintf` symbol. Side effect: removes the firmware's dependency on newlib `kill`/`getpid` stubs at link time. Internal cleanup with no UI-visible effect.
+
+#### TOD clock no longer freezes (Bart van Leeuwen)
+Cherry-picked from gideon `ebde0a55` (author: Bart van Leeuwen): stops the Ultimate app's freeze feature from holding CIA#1's Time-Of-Day clock. Previously a freeze-then-unfreeze cycle could leave the TOD clock stuck, manifesting as broken software that relies on the TOD interrupt.
+
+#### Cartridge crash on update fixed
+Cherry-picked from gideon `f681ef5a` (GideonZ): repairs the crash that could occur when a firmware update happened while a cartridge image was loaded.
+
+#### WiFi connection check restored
+Cherry-picked from gideon `f2f9d6fd` (GideonZ): restores a WiFi connection-status check that had been accidentally removed in an earlier refactor.
+
+#### SID player extra-loader fix (WilfredC64)
+Cherry-picked from gideon `f0c51d11` (WilfredC64): fixes installing the extra player in scenarios where there's enough space after the load end address but the previous logic miscalculated and refused.
+
+#### *(Latent)* Network entries in root file browser
+Uncomments a `BrowsableNetwork` loop in `browsable_root.h` that should add per-interface entries (Ethernet, WiFi) at the file-browser root alongside SD/Flash/Temp. Also adds an `EVENT_RESCAN` trigger when an AP scan returns zero results. **Dormant on Mark 2 hardware** — `NetworkInterface::getNumberOfInterfaces()` returns 0 in our current build, so the loop appends nothing. Will surface on hardware variants where the interface registration is wired up. Filed as a future investigation item rather than a working feature on this branch.
 
 See [the per-release notes on GitHub](https://github.com/jusii/prkl_ultimate/releases) for the exact commit-level breakdown of each `-expN` build.
 
