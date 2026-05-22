@@ -33,9 +33,13 @@ extern "C" {
 #include "sid_device_fpgasid.h"
 #include "sid_device_swinsid.h"
 #include "sid_device_armsid.h"
+#include "sid_device_pdsid.h"
+#include "sid_device_sidkick.h"
 #include "init_function.h"
 #include "color_timings.h"
 #include "hdmi_scan.h"
+#include "usb_hid.h"
+#include "usb_hid_config.h"
 
 const uint8_t default_colors[16][3] = {
     { 0x00, 0x00, 0x00 },
@@ -57,6 +61,19 @@ const uint8_t default_colors[16][3] = {
 
 // static pointer
 U64Config *u64_configurator = NULL;
+static volatile uint32_t u64_usb_hid_status_generation = 0;
+static volatile uint32_t u64_usb_hid_status_handled_generation = 0;
+
+extern "C" int u64_get_usb_hid_config_value(int key, int default_value)
+{
+    if ((!u64_configurator) || (!u64_configurator->cfg)) {
+        return default_value;
+    }
+    int value = u64_configurator->cfg->get_value(key);
+    return (value < 0) ? default_value : value;
+}
+
+static void u64_update_usb_hid_info_items(ConfigStore *cfg);
 static void init(void *_a, void *_b)
 {
     u64_configurator = new U64Config();
@@ -140,7 +157,6 @@ static SemaphoreHandle_t resetSemaphore;
 #define CFG_SPEED_PREF        0x52
 #define CFG_BADLINES_EN       0x53
 #define CFG_SUPERCPU_DET      0x54
-#define CFG_USB_MOUSE_SENSITIVITY 0x55
 
 #define CFG_SCAN_MODE_TEST    0xA8
 #define CFG_VIC_TEST          0xA9
@@ -175,6 +191,9 @@ uint8_t C64_SID2_EN_BAK;
 #define SID_TYPE_ARM2SID 6
 #define SID_TYPE_SIDFX   7
 #define SID_TYPE_FPGASID_DUKESTAH 8
+#define SID_TYPE_PDSID   9
+#define SID_TYPE_SIDKICK 10
+#define SID_TYPE_SIDKICK_PICO 11
 
 const char *u64_sid_base[] = { "Unmapped",
                                "$D400", "$D420", "$D440", "$D460", "$D480", "$D4A0", "$D4C0", "$D4E0",
@@ -235,8 +254,11 @@ static const char *yes_no[] = { "No", "Yes" };
 static const char *dvi_hdmi[] = { "Auto", "HDMI", "DVI" };
 static const char *video_sel[] = { "CVBS + SVideo", "RGB" };
 static const char *color_sel[] = { "PAL", "NTSC", "PAL-60", "NTSC-50", "PAL-60/L", "NTSC-50/L" };
+static const char *mouse_acceleration_modes[] = { "Off", "Adaptive" };
+static const char *mouse_modes[] = { "Cursor", "Mouse", "Mouse + Cursor", "Mouse + Wheel" };
+static const char *wheel_directions[] = { "Normal", "Reversed" };
 
-static const char *sid_types[] = { "None", "6581", "8580", "FPGASID", "SwinSID Ultimate", "ARMSID", "ARM2SID", "SidFx", "FPGASID Dukestah" };
+static const char *sid_types[] = { "None", "6581", "8580", "FPGASID", "SwinSID Ultimate", "ARMSID", "ARM2SID", "SidFx", "FPGASID Dukestah", "PDsid", "SIDKick (Teensy)", "SIDKick Pico" };
 static const char *sid_shunt[] = { "Off", "On" };
 static const char *sid_caps[] = { "470 pF", "22 nF" };
 static const char *filter_sel[] = { "8580 Lo", "8580 Hi", "6581", "6581 Alt", "U2 Low", "U2 Mid", "U2 High" };
@@ -268,9 +290,6 @@ static const uint8_t split_bits[] = { 0x00, 0x02, 0x04, 0x08, 0x10, 0x06, 0x12, 
 static const char *speeds_u64[]   = { " 1", " 2", " 3", " 4", " 5", " 6", " 8", "10", "12", "14", "16", "20", "24", "32", "40", "48" };
 static const char *speeds_u64ii[] = { " 1", " 2", " 3", " 4", " 6", " 8", "10", "12", "14", "16", "20", "24", "32", "40", "48", "64" };
 static const char *speed_regs[] = { "Off", "Manual", "C64U Turbo Registers", "TurboEnable Bit", "a", "b" };
-static const char *mouse_sens_labels[] = { "1/16", "1/8", "1/4", "1/3", "1/2", "2/3", "1x", "1.5x" };
-static const uint8_t mouse_sens_num[]  = {     1,     1,     1,     1,     1,     2,    1,      3 };
-static const uint8_t mouse_sens_den[]  = {    16,     8,     4,     3,     2,     3,    1,      2 };
 static const uint8_t speedregs_regvalues[] = { 0x00, 0x00, 0x01, 0x05, 0x00, 0x00 }; // removed 3 and 7
 
 /*
@@ -302,6 +321,16 @@ struct t_cfg_definition u64_cfg[] = {
 #else
     { CFG_JOYSWAP,              CFG_TYPE_ENUM, "Joystick Swapper",             "%s", joyswaps,     0,  1, 0 },
 #endif
+    { CFG_MOUSE_MODE,           CFG_TYPE_ENUM, "Mouse Mode",                   "%s", mouse_modes,       0,  3, 1 },
+    { CFG_MOUSE_SENSITIVITY,    CFG_TYPE_VALUE, "Mouse Sensitivity",           "%d", NULL,              1, 16, 8 },
+    { CFG_MOUSE_ACCELERATION,   CFG_TYPE_ENUM, "Mouse Acceleration",           "%s", mouse_acceleration_modes, 0,  1, 0 },
+    { CFG_SCROLL_FACTOR,        CFG_TYPE_VALUE, "Mouse Wheel Sensitivity",     "%d", NULL,              1, 16, 8 },
+    { CFG_WHEEL_DIRECTION,      CFG_TYPE_ENUM,  "Mouse Wheel Direction",       "%s", wheel_directions, 0,  1, 0 },
+    { CFG_MENU_MOUSE_NAV,       CFG_TYPE_ENUM,  "Menu Mouse Navigation",       "%s", en_dis,          0,  1, 1 },
+    { CFG_USB_MOUSE_NAME,       CFG_TYPE_INFO,  "USB Mouse",                   "%s", NULL,            0, 32, (int)"" },
+    { CFG_USB_MOUSE_MODE,       CFG_TYPE_INFO,  "USB Mouse HID Mode",          "%s", NULL,            0, 16, (int)"" },
+    { CFG_USB_KEYBOARD_NAME,    CFG_TYPE_INFO,  "USB Keyboard",                "%s", NULL,            0, 32, (int)"" },
+    { CFG_USB_KEYBOARD_MODE,    CFG_TYPE_INFO,  "USB Keyboard HID Mode",       "%s", NULL,            0, 16, (int)"" },
     { CFG_USERPORT_EN,          CFG_TYPE_ENUM, "UserPort Power Enable",        "%s", en_dis,       0,  1, 1 },
 //    { CFG_CART_PREFERENCE,      CFG_TYPE_ENUM, "Cartridge Preference",         "%s", cartmodes,    0,  2, 0 }, // moved to C64 for user consistency
     { CFG_PALETTE,              CFG_TYPE_STRFUNC, "Palette Definition",        "%s", (const char **)U64Config :: list_palettes, 0, 30, (int)"" },
@@ -331,14 +360,13 @@ struct t_cfg_definition u64_cfg[] = {
 #endif
     { CFG_BADLINES_EN,          CFG_TYPE_ENUM, "Badline Timing",               "%s", en_dis,       0,  1, 1 },
     { CFG_SUPERCPU_DET,         CFG_TYPE_ENUM, "SuperCPU Detect (D0BC)",       "%s", en_dis,       0,  1, 0 },
-    { CFG_USB_MOUSE_SENSITIVITY, CFG_TYPE_ENUM, "USB Mouse Sensitivity",       "%s", mouse_sens_labels, 0, 7, 6 },
     { CFG_TYPE_END,             CFG_TYPE_END,  "",                             "",   NULL,         0,  0, 0 } };
 
 struct t_cfg_definition u64_sid_detection_cfg[] = {
     { CFG_SOCKET1_ENABLE,       CFG_TYPE_ENUM, "SID Socket 1",                 "%s", en_dis,       0,  1, 0 },
     { CFG_SOCKET2_ENABLE,       CFG_TYPE_ENUM, "SID Socket 2",                 "%s", en_dis,       0,  1, 0 },
-    { CFG_SID1_TYPE,			CFG_TYPE_ENUM, "SID Detected Socket 1",        "%s", sid_types,    0,  8, 0 },
-    { CFG_SID2_TYPE,			CFG_TYPE_ENUM, "SID Detected Socket 2",        "%s", sid_types,    0,  8, 0 },
+    { CFG_SID1_TYPE,			CFG_TYPE_ENUM, "SID Detected Socket 1",        "%s", sid_types,    0, 11, 0 },
+    { CFG_SID2_TYPE,			CFG_TYPE_ENUM, "SID Detected Socket 2",        "%s", sid_types,    0, 11, 0 },
     { CFG_SID1_SHUNT,           CFG_TYPE_ENUM, "SID Socket 1 1K Ohm Resistor", "%s", sid_shunt,    0,  1, 0 },
     { CFG_SID2_SHUNT,           CFG_TYPE_ENUM, "SID Socket 2 1K Ohm Resistor", "%s", sid_shunt,    0,  1, 0 },
     { CFG_SID1_CAPS,            CFG_TYPE_ENUM, "SID Socket 1 Capacitors",      "%s", sid_caps,     0,  1, 0 },
@@ -572,6 +600,19 @@ int U64Config :: detectRemakes(int socket)
             return SID_TYPE_ARM2SID; // ARM2SID
         }
         return SID_TYPE_ARMSID; // ARMSID
+    }
+
+    if (SidDevicePdSid :: detect(base)) {
+        sidDevice[socket] = new SidDevicePdSid(socket, base);
+        return SID_TYPE_PDSID;
+    }
+    switch(SidDeviceSidKick :: detect(base)) {
+    case 1:
+        sidDevice[socket] = new SidDeviceSidKick(socket, base, 1); 
+        return SID_TYPE_SIDKICK_PICO;
+    case 2:
+        sidDevice[socket] = new SidDeviceSidKick(socket, base, 0); 
+        return SID_TYPE_SIDKICK;
     }
 
     return 0;
@@ -866,6 +907,7 @@ U64Config :: U64Config() : SubSystem(SUBSYSID_U64)
 
         cfg->set_alt_name("C64U Specific Settings");
         setup_config_menu(); // Create different config groups
+        u64_update_usb_hid_info_items(cfg);
         cfg->hide();
 
         // Boot hotkey
@@ -975,16 +1017,8 @@ void U64Config :: run_reset_task()
 void U64Config :: effectuate_settings()
 {
     extern uint8_t wasd_to_joy;
-    extern uint8_t g_usb_mouse_scale_num;
-    extern uint8_t g_usb_mouse_scale_den;
     if(!cfg)
         return;
-
-    int sens_idx = cfg->get_value(CFG_USB_MOUSE_SENSITIVITY);
-    if (sens_idx < 0) sens_idx = 6;
-    if (sens_idx > 7) sens_idx = 6;
-    g_usb_mouse_scale_num = mouse_sens_num[sens_idx];
-    g_usb_mouse_scale_den = mouse_sens_den[sens_idx];
 
     C64_PADDLE_EN    = cfg->get_value(CFG_PADDLE_EN);
     C64_PADDLE_SWAP  = cfg->get_value(CFG_JOYSWAP) & 1;
@@ -2316,16 +2350,11 @@ void U64Config :: configure_hdmi_output(void)
         U64_HDMI_ENABLE = (hdmiSetting == 1) ? 1 : 0; // 1 = HDMI, 2 = DVI
     }
 
-//#if U64 == 2    
+#if U64 == 2    
     volatile t_video_timing_regs *regs = (volatile t_video_timing_regs *)U64II_HDMI_REGS;
 
-
-
-
-
-
     regs->resync = 2;
-//#endif
+#endif
 }
 
 void U64Config :: list_palettes(ConfigItem *it, IndexedList<char *>& strings)
@@ -2481,6 +2510,65 @@ void U64Config :: late_init_palette(void *obj, void *param)
 }
 
 #include "bling_board.h"
+static void u64_update_usb_hid_info_items(ConfigStore *cfg)
+{
+    if (!cfg) {
+        return;
+    }
+
+    t_usb_hid_status_snapshot snapshot;
+    usb_hid_get_status_snapshot(snapshot);
+
+    struct {
+        uint8_t name_id;
+        uint8_t mode_id;
+        const char *name_value;
+        const char *mode_value;
+    } hid_items[] = {
+        { CFG_USB_MOUSE_NAME, CFG_USB_MOUSE_MODE, snapshot.mouse_name, snapshot.mouse_mode },
+        { CFG_USB_KEYBOARD_NAME, CFG_USB_KEYBOARD_MODE, snapshot.keyboard_name, snapshot.keyboard_mode },
+    };
+
+    for (unsigned int i = 0; i < (sizeof(hid_items) / sizeof(hid_items[0])); i++) {
+        ConfigItem *name_item = cfg->find_item(hid_items[i].name_id);
+        ConfigItem *mode_item = cfg->find_item(hid_items[i].mode_id);
+        if (name_item) {
+            name_item->setEnabled(false);
+            name_item->setString(hid_items[i].name_value);
+        }
+        if (mode_item) {
+            mode_item->setEnabled(false);
+            mode_item->setString(hid_items[i].mode_value);
+        }
+    }
+}
+
+extern "C" void u64_refresh_usb_hid_status(void)
+{
+    portENTER_CRITICAL();
+    u64_usb_hid_status_generation++;
+    portEXIT_CRITICAL();
+}
+
+extern "C" void u64_dispatch_usb_hid_status_refresh(void)
+{
+    bool refresh_needed = false;
+
+    portENTER_CRITICAL();
+    if (u64_usb_hid_status_generation != u64_usb_hid_status_handled_generation) {
+        u64_usb_hid_status_handled_generation = u64_usb_hid_status_generation;
+        refresh_needed = true;
+    }
+    portEXIT_CRITICAL();
+
+    if (refresh_needed) {
+        if (u64_configurator && u64_configurator->cfg) {
+            u64_update_usb_hid_info_items(u64_configurator->cfg);
+        }
+        FileManager :: getFileManager() -> sendEventToObservers(eRefreshDirectory, "/", "");
+    }
+}
+
 void U64Config :: setup_config_menu(void)
 {
     ConfigGroup *grp = ConfigGroupCollection :: getGroup("Video Configuration", SORT_ORDER_CFG_U64);
@@ -2509,8 +2597,18 @@ void U64Config :: setup_config_menu(void)
     grp->append(cfg->find_item(CFG_JOYSWAP)->set_item_altname("Joystick Input"));
     grp->append(sidaddressing.cfg->find_item(CFG_PADDLE_EN));
     grp->append(ConfigItem :: separator());
-    grp->append(ConfigItem :: heading("USB Mouse"));
-    grp->append(cfg->find_item(CFG_USB_MOUSE_SENSITIVITY)->set_item_altname("Sensitivity"));
+    grp->append(cfg->find_item(CFG_MOUSE_MODE));
+    grp->append(cfg->find_item(CFG_MOUSE_SENSITIVITY));
+    grp->append(cfg->find_item(CFG_MOUSE_ACCELERATION));
+    grp->append(cfg->find_item(CFG_MENU_MOUSE_NAV));
+    grp->append(ConfigItem :: separator());
+    grp->append(cfg->find_item(CFG_SCROLL_FACTOR));
+    grp->append(cfg->find_item(CFG_WHEEL_DIRECTION));
+    grp->append(ConfigItem :: separator());
+    grp->append(cfg->find_item(CFG_USB_MOUSE_NAME));
+    grp->append(cfg->find_item(CFG_USB_MOUSE_MODE));
+    grp->append(cfg->find_item(CFG_USB_KEYBOARD_NAME));
+    grp->append(cfg->find_item(CFG_USB_KEYBOARD_MODE));
     grp->append(ConfigItem :: separator());
     grp->append(ConfigItem :: heading("Note: When WASD Joystick emulation"));
     grp->append(ConfigItem :: heading("is enabled, hold [CTRL] to type the"));

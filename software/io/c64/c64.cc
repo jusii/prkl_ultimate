@@ -641,7 +641,10 @@ void C64::backup_io(void)
     // These printfs introduce some delay.. if you remove this, some programs won't resume well. Why?!
     printf("CIA1 registers: ");
     for (i = 0; i < 13; i++) {
-        printf("%b ", CIA1_REG(i));
+	if(i != 8 && i != 11) // reading registers 8 or 11 will mess with the TOD latching, so.. don't.
+            printf("%b ", CIA1_REG(i));
+	else
+            printf("--- "); // don't read registes 8 and 11, but still waste a bit of time with the printf
     }
     printf("\n");
 
@@ -1570,8 +1573,10 @@ void C64 :: setup_config_menu(void)
 {
     ConfigGroup *grp = ConfigGroupCollection :: getGroup("Memory Configuration", SORT_ORDER_CFG_MEM);
     grp->append(cfg->find_item(CFG_C64_KERNFILE));
+#ifdef U64
     grp->append(cfg->find_item(CFG_C64_BASIFILE)->set_item_altname("BASIC ROM"));
     grp->append(cfg->find_item(CFG_C64_CHARFILE)->set_item_altname("Character ROM"));
+#endif
     grp->append(cfg->find_item(CFG_C64_CART_CRT));
     grp->append(ConfigItem :: separator());
     grp->append(cfg->find_item(CFG_C64_REU_EN));

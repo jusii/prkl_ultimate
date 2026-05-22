@@ -98,6 +98,7 @@ SRCS_CC	 =  u2p_init.cc \
 			ui_elements.cc \
 			user_file_interaction.cc \
 			editor.cc \
+			hex_editor.cc \
 			tree_browser.cc \
 			tree_browser_state.cc \
 			config_menu.cc \
@@ -164,6 +165,8 @@ SRCS_CC	 =  u2p_init.cc \
 			sid_device_fpgasid.cc \
 			sid_device_swinsid.cc \
 			sid_device_armsid.cc \
+			sid_device_pdsid.cc \
+			sid_device_sidkick.cc \
 			ramdisk.cc \
 			system_info.cc \
 			ult_syscalls.cc \

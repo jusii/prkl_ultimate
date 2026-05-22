@@ -130,14 +130,20 @@ void Editor :: draw(void)
     int width = window->get_size_x();
     for(int i=0;i<height;i++) {
         window->move_cursor(0, i);
-        line = (*text)[i + first_line];
+        int line_idx = i + first_line;
+        line = (*text)[line_idx];
         if (line.buffer) {
-        	window->output_length(line.buffer, line.length);
-        	window->repeat(' ', width - line.length);
+            draw(line_idx, &line);
         } else {
             window->repeat(' ', width);
     	}
     }
+}
+
+void Editor :: draw(int line_idx, Line *line) 
+{
+    window->output_length(line->buffer, line->length);
+    window->repeat(' ', window->get_size_x() - line->length);
 }
 
 void Editor :: deinit()
@@ -158,6 +164,9 @@ int Editor :: poll(int dummy)
 
     c = keyb->getch();
     c = get_ui()->keymapper(c, e_keymap_default);
+    if(c == -2) {
+        return MENU_EXIT;
+    }
     if(c > 0) {
         ret = handle_key(c);
     }
@@ -186,7 +195,7 @@ int Editor :: handle_key(uint8_t c)
                 draw();
             }
             break;
-        case KEY_F1: // F1 -> page up
+        case KEY_F1: // page up
         case KEY_PAGEUP:
 			first_line -= height + 1;
 			if (first_line < 0) {
@@ -194,7 +203,12 @@ int Editor :: handle_key(uint8_t c)
 			}
 			draw();
 			break;
-        case KEY_F7: // F7 -> page down
+        case KEY_F2: // start
+        case KEY_HOME:
+			first_line = 0;
+			draw();
+			break;
+        case KEY_F7: // page down
         case KEY_PAGEDOWN:
         	first_line += height - 1;
 			if (first_line >= linecount - height) {
@@ -202,6 +216,14 @@ int Editor :: handle_key(uint8_t c)
 				if (first_line < 0)
 					first_line = 0;
 			}
+			draw();
+			break;
+        case KEY_F8: // end
+        case KEY_END:
+        	first_line = linecount - height;
+            if (first_line < 0) {
+                first_line = 0;
+            }
 			draw();
 			break;
         case KEY_BACK: // backspace

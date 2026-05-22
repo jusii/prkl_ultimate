@@ -17,6 +17,8 @@
 #endif // UPDATER
 #endif // NO_FILE_ACCESS
 
+extern "C" void u64_dispatch_usb_hid_status_refresh(void) __attribute__((weak));
+
 /* Help */
 static const char *helptext =
         "WASD:       Up/Left/Down/Right\n"
@@ -239,7 +241,7 @@ void UserInterface :: run_remote(void)
     host->take_ownership(this);
     appear();
     available = true;
-    while(1) {
+    while(host->exists()) {
         if (pollFocussed() == MENU_EXIT) {
             available = false;
             break;
@@ -409,6 +411,9 @@ int UserInterface :: pollFocussed(void)
 {
 	int ret = 0;
     do {
+        if (u64_dispatch_usb_hid_status_refresh) {
+            u64_dispatch_usb_hid_status_refresh();
+        }
         ret = ui_objects[focus]->poll(ret); // param pass chain
 
         // Stay in the current window configuration
@@ -553,10 +558,10 @@ int  UserInterface :: popup(const char *msg, uint8_t flags)
 
     UIPopup *pop = new UIPopup(this, msg, flags, 5, c_button_names, c_button_keys);
     pop->init();
-    int ret;
-    do {
+    int ret = 0;
+    while(!ret && host->exists()) {
         ret = pop->poll(0);
-    } while(!ret);
+    }
     pop->deinit();
     delete pop;
     return ret;
@@ -566,10 +571,10 @@ int  UserInterface :: popup(const char *msg, int count, const char **names, cons
 {
     UIPopup *pop = new UIPopup(this, msg, (1 << (count + 1))-1, count, names, keys);
     pop->init();
-    int ret;
-    do {
+    int ret = 0;
+    while(!ret && host->exists()) {
         ret = pop->poll(0);
-    } while(!ret);
+    }
     pop->deinit();
     delete pop;
     return ret;
@@ -580,10 +585,10 @@ int UserInterface :: string_box(const char *msg, char *buffer, int maxlen)
     UIStringBox *box = new UIStringBox(this, msg, buffer, maxlen);
     box->init();
     screen->cursor_visible(1);
-    int ret;
-    do {
+    int ret = 0;
+    while(!ret && host->exists()) {
         ret = box->poll(0);
-    } while(!ret);
+    }
     screen->cursor_visible(0);
     box->deinit();
     delete box;
@@ -595,10 +600,10 @@ int UserInterface :: string_edit(char *buffer, int maxlen, Window *w, int x, int
     UIStringEdit *edit = new UIStringEdit(buffer, maxlen);
     edit->init(w, keyboard, x, y, maxlen); // maybe the max len should be limited by the window!
     screen->cursor_visible(1);
-    int ret;
-    do {
+    int ret = 0;
+    while(!ret && host->exists()) {
         ret = edit->poll(0);
-    } while(!ret);
+    }
     screen->cursor_visible(0);
     delete edit;
     return ret;
@@ -609,13 +614,16 @@ int UserInterface :: choice(const char *msg, const char **choices, int count)
     UIChoiceBox *box = new UIChoiceBox(this, msg, choices, count);
     box->init();
     screen->cursor_visible(0);
-    int ret;
-    do {
+    int ret = 0;
+    while(!ret && host->exists()) {
         ret = box->poll(0);
-    } while(!ret);
+    }
     box->deinit();
     delete box;
     // Return values are 1 based, unless it's an error
+    if (!ret && !host->exists()) {
+        return MENU_CLOSE;
+    }
     return (ret > 0) ? (ret - 1) : ret;
 }
 
@@ -636,16 +644,25 @@ void UserInterface :: hide_progress(void)
     delete status_box;
 }
 
+void UserInterface :: run_editor(Editor *editor)
+{
+    editor->init(screen, keyboard);
+    int ret = 0;
+    while(!ret && host->exists()) {
+        ret = editor->poll(0);
+    }
+    editor->deinit();
+    delete editor;
+}
+
 void UserInterface :: run_editor(const char *text_buf, int max_len)
 {
-    Editor *edit = new Editor(this, text_buf, max_len);
-    edit->init(screen, keyboard);
-    int ret;
-    do {
-        ret = edit->poll(0);
-    } while(!ret);
-    edit->deinit();
-    delete edit;
+    run_editor(new Editor(this, text_buf, max_len));
+}
+
+void UserInterface :: run_hex_editor(const char *text_buf, int max_len)
+{
+    run_editor(new HexEditor(this, text_buf, max_len));
 }
 
 QueueHandle_t userMessageQueue = 0;
